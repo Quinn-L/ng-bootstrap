@@ -60,6 +60,9 @@ export class NgbPopover implements OnInit, AfterViewChecked, OnDestroy {
   private _windowRef: ComponentRef<NgbPopoverWindow>;
   private _unregisterListenersFn;
 
+  private _ignoreUpdatePosition = false;
+  private _scrollListener: (ev: UIEvent) => void;
+
   constructor(
       private _elementRef: ElementRef, private _renderer: Renderer, injector: Injector,
       componentFactoryResolver: ComponentFactoryResolver, viewContainerRef: ViewContainerRef) {
@@ -73,9 +76,18 @@ export class NgbPopover implements OnInit, AfterViewChecked, OnDestroy {
    */
   open() {
     if (!this._windowRef) {
-      this._windowRef = this._popupService.open(this.ngbPopover);
+      this._windowRef = this._popupService.open(this.ngbPopover, true);
       this._windowRef.instance.placement = this.placement;
       this._windowRef.instance.title = this.title;
+      this._scrollListener = (ev: UIEvent) => {
+        // document level event  also triggers ngAfterViewChecked
+        if (ev.target === document) {
+          // Don't need to update if the scroll happened on the document, since
+          // the popup is relative to the document
+          this._ignoreUpdatePosition = true;
+        }
+      };
+      document.addEventListener('scroll', this._scrollListener, true);
     }
   }
 
@@ -83,6 +95,7 @@ export class NgbPopover implements OnInit, AfterViewChecked, OnDestroy {
    * Closes an element’s popover. This is considered a “manual” triggering of the popover.
    */
   close(): void {
+    document.removeEventListener('scroll', this._scrollListener, true);
     this._popupService.close();
     this._windowRef = null;
   }
@@ -105,17 +118,21 @@ export class NgbPopover implements OnInit, AfterViewChecked, OnDestroy {
   }
 
   ngAfterViewChecked() {
-    if (this._windowRef) {
+    if (this._windowRef && !this._ignoreUpdatePosition) {
       const targetPosition = this._positioning.positionElements(
-          this._elementRef.nativeElement, this._windowRef.location.nativeElement, this.placement, false);
+          this._elementRef.nativeElement, this._windowRef.location.nativeElement, this.placement, true);
 
       const targetStyle = this._windowRef.location.nativeElement.style;
       targetStyle.top = `${targetPosition.top}px`;
       targetStyle.left = `${targetPosition.left}px`;
     }
+    this._ignoreUpdatePosition = false;
   }
 
-  ngOnDestroy() { this._unregisterListenersFn(); }
+  ngOnDestroy() {
+    this.close();
+    this._unregisterListenersFn();
+  }
 }
 
 export const NGB_POPOVER_DIRECTIVES = [NgbPopover, NgbPopoverWindow];

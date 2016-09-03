@@ -18,12 +18,14 @@ export class PopupService<T> {
     this._windowFactory = componentFactoryResolver.resolveComponentFactory<T>(type);
   }
 
-  open(content?: string | TemplateRef<any>): ComponentRef<T> {
+  open(content?: string | TemplateRef<any>, appendToBody?: boolean): ComponentRef<T> {
     if (!this._windowRef) {
       const nodes = this._getContentNodes(content);
       this._windowRef = this._viewContainerRef.createComponent(this._windowFactory, 0, this._injector, nodes);
     }
-
+    if (appendToBody) {
+      document.body.appendChild(this._windowRef.location.nativeElement);
+    }
     return this._windowRef;
   }
 

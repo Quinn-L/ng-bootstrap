@@ -63,6 +63,9 @@ export class NgbTypeahead implements OnInit,
   private _valueChanges = new Subject<string>();
   private _windowRef: ComponentRef<NgbTypeaheadWindow>;
 
+  private _ignoreUpdatePosition = false;
+  private _scrollListener: (ev: UIEvent) => void;
+
   /**
    * A function to convert a given value into string to display in the input field
    */
@@ -105,17 +108,21 @@ export class NgbTypeahead implements OnInit,
   }
 
   ngAfterViewChecked() {
-    if (this._windowRef) {
+    if (this._windowRef && !this._ignoreUpdatePosition) {
       const targetPosition = this._positioning.positionElements(
-          this._elementRef.nativeElement, this._windowRef.location.nativeElement, 'bottom-left', false);
+          this._elementRef.nativeElement, this._windowRef.location.nativeElement, 'bottom-left', true);
 
       const targetStyle = this._windowRef.location.nativeElement.style;
       targetStyle.top = `${targetPosition.top}px`;
       targetStyle.left = `${targetPosition.left}px`;
     }
+    this._ignoreUpdatePosition = false;
   }
 
-  ngOnDestroy() { this._subscription.unsubscribe(); }
+  ngOnDestroy() {
+    this.closePopup();
+    this._subscription.unsubscribe();
+  }
 
   ngOnInit() {
     this._subscription = this._valueChanges.let (this.ngbTypeahead).subscribe((results) => {
@@ -153,6 +160,7 @@ export class NgbTypeahead implements OnInit,
    * @internal
    */
   closePopup() {
+    document.removeEventListener('scroll', this._scrollListener, true);
     this._popupService.close();
     this._windowRef = null;
   }
@@ -189,8 +197,17 @@ export class NgbTypeahead implements OnInit,
 
   private _openPopup() {
     if (!this._windowRef) {
-      this._windowRef = this._popupService.open();
+      this._windowRef = this._popupService.open(null, true);
       this._windowRef.instance.selectEvent.subscribe((result: any) => this._selectResult(result));
+      this._scrollListener = (ev: UIEvent) => {
+        // document level event  also triggers ngAfterViewChecked
+        if (ev.target === document) {
+          // Don't need to update if the scroll happened on the document, since
+          // the popup is relative to the document
+          this._ignoreUpdatePosition = true;
+        }
+      };
+      document.addEventListener('scroll', this._scrollListener, true);
     }
   }
 
