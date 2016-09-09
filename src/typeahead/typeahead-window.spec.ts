@@ -1,10 +1,10 @@
 import {TestBed, ComponentFixture} from '@angular/core/testing';
-import {createGenericTestComponent} from '../util/tests';
+import {createGenericTestComponent} from '../test/common';
 
 import {Component} from '@angular/core';
 
 import {NgbTypeaheadWindow} from './typeahead-window';
-import {expectResults, getWindowLinks} from './test-common';
+import {expectResults, getWindowLinks} from '../test/typeahead/common';
 import {NgbTypeaheadModule} from './typeahead.module';
 
 const createTestComponent = (html: string) =>
@@ -128,6 +128,17 @@ describe('ngb-typeahead-window', () => {
       fixture.detectChanges();
       expectResults(fixture.nativeElement, ['bar', '+baz']);
       expect(fixture.componentInstance.active).toBe('baz');
+    });
+
+    it('should have buttons of type button', () => {
+      const html = `
+           <ngb-typeahead-window [results]="results" [term]="term"></ngb-typeahead-window>`;
+      const fixture = createTestComponent(html);
+      const buttons = fixture.nativeElement.querySelectorAll('button');
+      expect(buttons.length).toBeGreaterThan(0);
+      for (let i = 0; i < buttons.length; i++) {
+        expect(buttons[i].getAttribute('type')).toBe('button');
+      }
     });
   });
 

@@ -20,12 +20,17 @@ import {NgbTypeaheadModule} from './typeahead/typeahead.module';
 export {NgbPanelChangeEvent, NgbAccordionConfig} from './accordion/accordion.module';
 export {NgbModal, NgbModalOptions, NgbModalRef, ModalDismissReasons} from './modal/modal.module';
 export {NgbTabChangeEvent} from './tabset/tabset.module';
-export {NgbAlertConfig, NgbDismissibleAlertConfig} from './alert/alert.module';
+export {NgbAlertConfig, NgbSelfClosingAlertConfig} from './alert/alert.module';
 export {NgbCarouselConfig} from './carousel/carousel.module';
+export {NgbDatepickerConfig} from './datepicker/datepicker.module';
+export {NgbDropdownConfig} from './dropdown/dropdown.module';
 export {NgbPaginationConfig} from './pagination/pagination.module';
+export {NgbPopoverConfig} from './popover/popover.module';
 export {NgbProgressbarConfig} from './progressbar/progressbar.module';
 export {NgbRatingConfig} from './rating/rating.module';
 export {NgbTimepickerConfig} from './timepicker/timepicker.module';
+export {NgbTabsetConfig} from './tabset/tabset.module';
+export {NgbTooltipConfig} from './tooltip/tooltip.module';
 
 @NgModule({
   exports: [

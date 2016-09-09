@@ -1,6 +1,6 @@
 import {TestBed, ComponentFixture} from '@angular/core/testing';
-import {createGenericTestComponent} from '../util/tests';
-import {getMonthSelect, getYearSelect, getNavigationLinks} from './test-common';
+import {createGenericTestComponent} from '../test/common';
+import {getMonthSelect, getYearSelect, getNavigationLinks} from '../test/datepicker/common';
 
 import {Component} from '@angular/core';
 
@@ -93,6 +93,14 @@ describe('ngbDatepickerNavigation', () => {
     // next
     links[1].click();
     expect(fixture.componentInstance.onNavigate).toHaveBeenCalledWith(NavigationEvent.NEXT);
+  });
+
+  it('should have buttons of type button', () => {
+    const fixture = createTestComponent(
+        `<tbody ngbDatepickerNavigation type="select" [date]="date" [minDate]="minDate" [maxDate]="maxDate"></tbody>`);
+
+    const links = getNavigationLinks(fixture.nativeElement);
+    links.forEach((link) => { expect(link.getAttribute('type')).toBe('button'); });
   });
 
 });

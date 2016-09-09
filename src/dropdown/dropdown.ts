@@ -1,4 +1,5 @@
 import {Directive, Input, Output, HostListener, EventEmitter} from '@angular/core';
+import {NgbDropdownConfig} from './dropdown-config';
 
 /**
  * Transforms a node into a dropdown.
@@ -18,12 +19,12 @@ export class NgbDropdown {
   /**
    * Indicates that the dropdown should open upwards
    */
-  @Input() up = false;
+  @Input() up: boolean;
 
   /**
    * Indicates that dropdown should be closed when selecting one of dropdown items (click) or pressing ESC.
    */
-  @Input() autoClose = true;
+  @Input() autoClose: boolean;
 
   /**
    *  Defines whether or not the dropdown-menu is open initially.
@@ -36,6 +37,11 @@ export class NgbDropdown {
    */
   @Output() openChange = new EventEmitter();
 
+  constructor(config: NgbDropdownConfig) {
+    this.up = config.up;
+    this.autoClose = config.autoClose;
+  }
+
 
   /**
    * Checks if the dropdown menu is open or not.
@@ -46,16 +52,20 @@ export class NgbDropdown {
    * Opens the dropdown menu of a given navbar or tabbed navigation.
    */
   open(): void {
-    this._open = true;
-    this.openChange.emit(true);
+    if (!this._open) {
+      this._open = true;
+      this.openChange.emit(true);
+    }
   }
 
   /**
    * Closes the dropdown menu of a given navbar or tabbed navigation.
    */
   close(): void {
-    this._open = false;
-    this.openChange.emit(false);
+    if (this._open) {
+      this._open = false;
+      this.openChange.emit(false);
+    }
   }
 
   /**

@@ -1,11 +1,12 @@
-import {TestBed, ComponentFixture} from '@angular/core/testing';
-import {createGenericTestComponent} from '../util/tests';
+import {TestBed, ComponentFixture, inject} from '@angular/core/testing';
+import {createGenericTestComponent} from '../test/common';
 
 import {Component} from '@angular/core';
 import {By} from '@angular/platform-browser';
 
 import {NgbDropdownModule} from './dropdown.module';
 import {NgbDropdown} from './dropdown';
+import {NgbDropdownConfig} from './dropdown-config';
 
 const createTestComponent = (html: string) =>
     createGenericTestComponent(html, TestComponent) as ComponentFixture<TestComponent>;
@@ -16,6 +17,13 @@ function getDropdownEl(tc) {
 
 describe('ngb-dropdown', () => {
   beforeEach(() => { TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbDropdownModule]}); });
+
+  it('should initialize inputs with provided config', () => {
+    const defaultConfig = new NgbDropdownConfig();
+    const dropdown = new NgbDropdown(new NgbDropdownConfig);
+    expect(dropdown.up).toBe(defaultConfig.up);
+    expect(dropdown.autoClose).toBe(defaultConfig.autoClose);
+  });
 
   it('should be closed and down by default', () => {
     const html = `<div ngbDropdown></div>`;
@@ -116,6 +124,40 @@ describe('ngb-dropdown', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.isOpen).toBe(false);
+  });
+
+  it('should not raise open events if open state does not change', () => {
+    const html = `
+      <button (click)="drop.open(); $event.stopPropagation()">Open</button>
+      <button (click)="drop.close(); $event.stopPropagation()">Close</button>
+      <div ngbDropdown (openChange)="recordStateChange($event)" #drop="ngbDropdown"></div>`;
+
+    const fixture = createTestComponent(html);
+    const compiled = fixture.nativeElement;
+    let buttonEls = compiled.querySelectorAll('button');
+
+    expect(fixture.componentInstance.isOpen).toBe(false);
+    expect(fixture.componentInstance.stateChanges).toEqual([]);
+
+    buttonEls[1].click();  // close a closed one
+    fixture.detectChanges();
+    expect(fixture.componentInstance.isOpen).toBe(false);
+    expect(fixture.componentInstance.stateChanges).toEqual([]);
+
+    buttonEls[0].click();  // open a closed one
+    fixture.detectChanges();
+    expect(fixture.componentInstance.isOpen).toBe(true);
+    expect(fixture.componentInstance.stateChanges).toEqual([true]);
+
+    buttonEls[0].click();  // open an opened one
+    fixture.detectChanges();
+    expect(fixture.componentInstance.isOpen).toBe(true);
+    expect(fixture.componentInstance.stateChanges).toEqual([true]);
+
+    buttonEls[1].click();  // close an opened one
+    fixture.detectChanges();
+    expect(fixture.componentInstance.isOpen).toBe(false);
+    expect(fixture.componentInstance.stateChanges).toEqual([true, false]);
   });
 });
 
@@ -268,9 +310,58 @@ describe('ngb-dropdown-toggle', () => {
     fixture.detectChanges();
     expect(dropdownEl).toHaveCssClass('open');
   });
+
+
+  describe('Custom config', () => {
+    let config: NgbDropdownConfig;
+
+    beforeEach(() => {
+      TestBed.configureTestingModule({imports: [NgbDropdownModule]});
+      TestBed.overrideComponent(TestComponent, {set: {template: '<div ngbDropdown></div>'}});
+    });
+
+    beforeEach(inject([NgbDropdownConfig], (c: NgbDropdownConfig) => {
+      config = c;
+      config.up = true;
+    }));
+
+    it('should initialize inputs with provided config', () => {
+      const fixture = TestBed.createComponent(TestComponent);
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement;
+
+      expect(getDropdownEl(compiled)).toHaveCssClass('dropup');
+    });
+  });
+
+  describe('Custom config as provider', () => {
+    let config = new NgbDropdownConfig();
+    config.up = true;
+
+    beforeEach(() => {
+      TestBed.configureTestingModule(
+          {imports: [NgbDropdownModule], providers: [{provide: NgbDropdownConfig, useValue: config}]});
+    });
+
+    it('should initialize inputs with provided config as provider', () => {
+      const fixture = createTestComponent('<div ngbDropdown></div>');
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement;
+
+      expect(getDropdownEl(compiled)).toHaveCssClass('dropup');
+    });
+  });
 });
 
 @Component({selector: 'test-cmp', template: ''})
 class TestComponent {
   isOpen = false;
+  stateChanges = [];
+
+  recordStateChange($event) {
+    this.stateChanges.push($event);
+    this.isOpen = $event;
+  }
 }
