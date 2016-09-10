@@ -122,6 +122,7 @@ export class NgbTooltip implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.close();
     this._unregisterListenersFn();
     this._zoneSubscription.unsubscribe();
   }
