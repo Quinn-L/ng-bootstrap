@@ -4,7 +4,6 @@ import {
   Input,
   ChangeDetectionStrategy,
   OnInit,
-  AfterViewChecked,
   OnDestroy,
   Injector,
   Renderer,
@@ -12,11 +11,12 @@ import {
   ElementRef,
   TemplateRef,
   ViewContainerRef,
-  ComponentFactoryResolver
+  ComponentFactoryResolver,
+  NgZone
 } from '@angular/core';
 
 import {listenToTriggers} from '../util/triggers';
-import {Positioning} from '../util/positioning';
+import {positionElements} from '../util/positioning';
 import {PopupService} from '../util/popup';
 import {NgbTooltipConfig} from './tooltip-config';
 
@@ -37,7 +37,7 @@ export class NgbTooltipWindow {
  * A lightweight, extensible directive for fancy tooltip creation.
  */
 @Directive({selector: '[ngbTooltip]', exportAs: 'ngbTooltip'})
-export class NgbTooltip implements OnInit, AfterViewChecked, OnDestroy {
+export class NgbTooltip implements OnInit, OnDestroy {
   /**
    * Content to be displayed as tooltip.
    */
@@ -52,21 +52,28 @@ export class NgbTooltip implements OnInit, AfterViewChecked, OnDestroy {
   @Input() triggers: string;
 
   private _popupService: PopupService<NgbTooltipWindow>;
-  private _positioning = new Positioning();
   private _windowRef: ComponentRef<NgbTooltipWindow>;
   private _unregisterListenersFn;
+  private _zoneSubscription: any;
 
   private _ignoreUpdatePosition = false;
   private _scrollListener: (ev: UIEvent) => void;
 
   constructor(
       private _elementRef: ElementRef, private _renderer: Renderer, injector: Injector,
-      componentFactoryResolver: ComponentFactoryResolver, viewContainerRef: ViewContainerRef,
-      config: NgbTooltipConfig) {
+      componentFactoryResolver: ComponentFactoryResolver, viewContainerRef: ViewContainerRef, config: NgbTooltipConfig,
+      ngZone: NgZone) {
     this.placement = config.placement;
     this.triggers = config.triggers;
     this._popupService = new PopupService<NgbTooltipWindow>(
         NgbTooltipWindow, injector, viewContainerRef, _renderer, componentFactoryResolver);
+
+    this._zoneSubscription = ngZone.onStable.subscribe(() => {
+      if (this._windowRef && !this._ignoreUpdatePosition) {
+        positionElements(this._elementRef.nativeElement, this._windowRef.location.nativeElement, this.placement, true);
+      }
+      this._ignoreUpdatePosition = false;
+    });
   }
 
   /**
@@ -114,20 +121,8 @@ export class NgbTooltip implements OnInit, AfterViewChecked, OnDestroy {
         this.toggle.bind(this));
   }
 
-  ngAfterViewChecked() {
-    if (this._windowRef && !this._ignoreUpdatePosition) {
-      const targetPosition = this._positioning.positionElements(
-          this._elementRef.nativeElement, this._windowRef.location.nativeElement, this.placement, true);
-
-      const targetStyle = this._windowRef.location.nativeElement.style;
-      targetStyle.top = `${targetPosition.top}px`;
-      targetStyle.left = `${targetPosition.left}px`;
-    }
-    this._ignoreUpdatePosition = false;
-  }
-
   ngOnDestroy() {
-    this.close();
     this._unregisterListenersFn();
+    this._zoneSubscription.unsubscribe();
   }
 }

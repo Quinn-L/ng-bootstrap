@@ -19,10 +19,11 @@ import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
 import {Observable, Subject, Subscription} from 'rxjs/Rx';
 import 'rxjs/add/operator/do';
 import 'rxjs/add/operator/let';
-import {Positioning} from '../util/positioning';
+import {positionElements} from '../util/positioning';
 import {NgbTypeaheadWindow, ResultTemplateContext} from './typeahead-window';
 import {PopupService} from '../util/popup';
 import {toString} from '../util/util';
+import {NgbTypeaheadConfig} from './typeahead-config';
 
 enum Key {
   Tab = 9,
@@ -59,7 +60,6 @@ export class NgbTypeahead implements OnInit,
     AfterViewChecked, ControlValueAccessor, OnDestroy {
   private _onChangeNoEmit: (_: any) => void;
   private _popupService: PopupService<NgbTypeaheadWindow>;
-  private _positioning = new Positioning();
   private _subscription: Subscription;
   private _userInput: string;
   private _valueChanges = new Subject<string>();
@@ -92,7 +92,7 @@ export class NgbTypeahead implements OnInit,
   /**
    * Show hint when an option in the result list matches.
    */
-  @Input() showHint = false;
+  @Input() showHint: boolean;
 
   /**
    * An event emitted when a match is selected. Event payload is equal to the selected item.
@@ -108,7 +108,8 @@ export class NgbTypeahead implements OnInit,
 
   constructor(
       private _elementRef: ElementRef, private _viewContainerRef: ViewContainerRef, private _renderer: Renderer,
-      private _injector: Injector, componentFactoryResolver: ComponentFactoryResolver) {
+      private _injector: Injector, componentFactoryResolver: ComponentFactoryResolver, config: NgbTypeaheadConfig) {
+    this.showHint = config.showHint;
     this._popupService = new PopupService<NgbTypeaheadWindow>(
         NgbTypeaheadWindow, _injector, _viewContainerRef, _renderer, componentFactoryResolver);
     this._onChangeNoEmit = (_: any) => {};
@@ -116,12 +117,7 @@ export class NgbTypeahead implements OnInit,
 
   ngAfterViewChecked() {
     if (this._windowRef && !this._ignoreUpdatePosition) {
-      const targetPosition = this._positioning.positionElements(
-          this._elementRef.nativeElement, this._windowRef.location.nativeElement, 'bottom-left', true);
-
-      const targetStyle = this._windowRef.location.nativeElement.style;
-      targetStyle.top = `${targetPosition.top}px`;
-      targetStyle.left = `${targetPosition.left}px`;
+      positionElements(this._elementRef.nativeElement, this._windowRef.location.nativeElement, 'bottom-left', true);
     }
     this._ignoreUpdatePosition = false;
   }
@@ -156,6 +152,10 @@ export class NgbTypeahead implements OnInit,
   registerOnTouched(fn: () => any): void { this.onTouched = fn; }
 
   writeValue(value) { this._writeInputValue(this._formatItemForInput(value)); }
+
+  setDisabledState(isDisabled: boolean): void {
+    this._renderer.setElementProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
+  }
 
   /**
    * @internal
