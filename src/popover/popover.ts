@@ -4,7 +4,6 @@ import {
   Input,
   ChangeDetectionStrategy,
   OnInit,
-  AfterViewChecked,
   OnDestroy,
   Injector,
   Renderer,
@@ -13,6 +12,7 @@ import {
   TemplateRef,
   ViewContainerRef,
   ComponentFactoryResolver,
+  NgZone
 } from '@angular/core';
 
 import {listenToTriggers} from '../util/triggers';
@@ -38,7 +38,7 @@ export class NgbPopoverWindow {
  * A lightweight, extensible directive for fancy popover creation.
  */
 @Directive({selector: '[ngbPopover]', exportAs: 'ngbPopover'})
-export class NgbPopover implements OnInit, AfterViewChecked, OnDestroy {
+export class NgbPopover implements OnInit, OnDestroy {
   /**
    * Content to be displayed as popover.
    */
@@ -59,18 +59,26 @@ export class NgbPopover implements OnInit, AfterViewChecked, OnDestroy {
   private _popupService: PopupService<NgbPopoverWindow>;
   private _windowRef: ComponentRef<NgbPopoverWindow>;
   private _unregisterListenersFn;
+  private _zoneSubscription: any;
 
   private _ignoreUpdatePosition = false;
   private _scrollListener: (ev: UIEvent) => void;
 
   constructor(
       private _elementRef: ElementRef, private _renderer: Renderer, injector: Injector,
-      componentFactoryResolver: ComponentFactoryResolver, viewContainerRef: ViewContainerRef,
-      config: NgbPopoverConfig) {
+      componentFactoryResolver: ComponentFactoryResolver, viewContainerRef: ViewContainerRef, config: NgbPopoverConfig,
+      ngZone: NgZone) {
     this.placement = config.placement;
     this.triggers = config.triggers;
     this._popupService = new PopupService<NgbPopoverWindow>(
         NgbPopoverWindow, injector, viewContainerRef, _renderer, componentFactoryResolver);
+
+    this._zoneSubscription = ngZone.onStable.subscribe(() => {
+      if (this._windowRef && !this._ignoreUpdatePosition) {
+        positionElements(this._elementRef.nativeElement, this._windowRef.location.nativeElement, this.placement, true);
+      }
+      this._ignoreUpdatePosition = false;
+    });
   }
 
 
@@ -120,16 +128,10 @@ export class NgbPopover implements OnInit, AfterViewChecked, OnDestroy {
         this.toggle.bind(this));
   }
 
-  ngAfterViewChecked() {
-    if (this._windowRef && !this._ignoreUpdatePosition) {
-      positionElements(this._elementRef.nativeElement, this._windowRef.location.nativeElement, this.placement, true);
-    }
-    this._ignoreUpdatePosition = false;
-  }
-
   ngOnDestroy() {
     this.close();
     this._unregisterListenersFn();
+    this._zoneSubscription.unsubscribe();
   }
 }
 

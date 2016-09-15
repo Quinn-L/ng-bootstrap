@@ -7,9 +7,21 @@ import {DEMO_SNIPPETS} from './demos';
     <ngbd-content-wrapper component="Datepicker">
       <ngbd-api-docs directive="NgbDatepicker"></ngbd-api-docs>
       <ngbd-api-docs-class type="DayTemplateContext"></ngbd-api-docs-class>
+      <ngbd-api-docs-class type="NgbDatepickerI18n"></ngbd-api-docs-class>
       <ngbd-api-docs-config type="NgbDatepickerConfig"></ngbd-api-docs-config>
       <ngbd-example-box demoTitle="Basic datepicker" [htmlSnippet]="snippets.basic.markup" [tsSnippet]="snippets.basic.code">
         <ngbd-datepicker-basic></ngbd-datepicker-basic>
+      </ngbd-example-box>
+      <ngbd-example-box demoTitle="Datepicker in a popup" [htmlSnippet]="snippets.popup.markup" [tsSnippet]="snippets.popup.code">
+        <ngbd-datepicker-popup></ngbd-datepicker-popup>
+      </ngbd-example-box>
+      <ngbd-example-box demoTitle="Disabled datepicker" [htmlSnippet]="snippets.disabled.markup" [tsSnippet]="snippets.disabled.code">
+        <ngbd-datepicker-disabled></ngbd-datepicker-disabled>
+      </ngbd-example-box>
+      <ngbd-example-box demoTitle="Internationalization of datepickers" 
+                        [htmlSnippet]="snippets.i18n.markup" 
+                        [tsSnippet]="snippets.i18n.code">
+        <ngbd-datepicker-i18n></ngbd-datepicker-i18n>
       </ngbd-example-box>
       <ngbd-example-box demoTitle="Global configuration of datepickers" 
                         [htmlSnippet]="snippets.config.markup" 
