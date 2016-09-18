@@ -39,10 +39,6 @@ export class NgbTooltipWindow {
 @Directive({selector: '[ngbTooltip]', exportAs: 'ngbTooltip'})
 export class NgbTooltip implements OnInit, OnDestroy {
   /**
-   * Content to be displayed as tooltip.
-   */
-  @Input() ngbTooltip: string | TemplateRef<any>;
-  /**
    * Placement of a tooltip. Accepts: "top", "bottom", "left", "right"
    */
   @Input() placement: 'top' | 'bottom' | 'left' | 'right';
@@ -51,6 +47,7 @@ export class NgbTooltip implements OnInit, OnDestroy {
    */
   @Input() triggers: string;
 
+  private _ngbTooltip: string | TemplateRef<any>;
   private _popupService: PopupService<NgbTooltipWindow>;
   private _windowRef: ComponentRef<NgbTooltipWindow>;
   private _unregisterListenersFn;
@@ -77,11 +74,24 @@ export class NgbTooltip implements OnInit, OnDestroy {
   }
 
   /**
+   * Content to be displayed as tooltip. If falsy, the tooltip won't open.
+   */
+  @Input()
+  set ngbTooltip(value: string | TemplateRef<any>) {
+    this._ngbTooltip = value;
+    if (!value && this._windowRef) {
+      this.close();
+    }
+  }
+
+  get ngbTooltip() { return this._ngbTooltip; }
+
+  /**
    * Opens an element’s tooltip. This is considered a “manual” triggering of the tooltip.
    */
   open() {
-    if (!this._windowRef) {
-      this._windowRef = this._popupService.open(this.ngbTooltip, true);
+    if (!this._windowRef && this._ngbTooltip) {
+      this._windowRef = this._popupService.open(this._ngbTooltip, true);
       this._windowRef.instance.placement = this.placement;
       this._scrollListener = (ev: UIEvent) => {
         // document level event  also triggers ngAfterViewChecked
