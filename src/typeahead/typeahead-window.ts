@@ -1,4 +1,4 @@
-import {Component, Input, Output, EventEmitter, TemplateRef} from '@angular/core';
+import {Component, Input, Output, ElementRef, EventEmitter, TemplateRef, ContentChildren} from '@angular/core';
 
 import {toString} from '../util/util';
 
@@ -64,6 +64,8 @@ export class NgbTypeaheadWindow {
    */
   @Output('select') selectEvent = new EventEmitter();
 
+  constructor(private _elementRef: ElementRef){}
+
   getActive() { return this.results[this.activeIdx]; }
 
   /**
@@ -71,12 +73,74 @@ export class NgbTypeaheadWindow {
    */
   markActive(activeIdx: number) { this.activeIdx = activeIdx; }
 
-  next() { this.activeIdx = (this.activeIdx + 1) % this.results.length; }
+  next() {
+    let prevIndex = this.activeIdx;
+    this.activeIdx = (this.activeIdx + 1) % this.results.length;
+    this.updateView(prevIndex > this.activeIdx);
+  }
 
-  prev() { this.activeIdx = (this.activeIdx === 0 ? this.results.length - 1 : this.activeIdx - 1); }
+  prev() {
+    let prevIndex = this.activeIdx;
+    this.activeIdx = (this.activeIdx === 0 ? this.results.length - 1 : this.activeIdx - 1);
+    this.updateView(prevIndex > this.activeIdx);
+  }
 
   /**
    * @internal
    */
   select(item) { this.selectEvent.emit(item); }
+
+  private updateView(navUpwards: boolean) {
+    let buttons = (this._elementRef.nativeElement as HTMLElement).querySelectorAll('button');
+    let directChildren: HTMLElement[] = [];
+    for (let i = 0; i < buttons.length; i++) {
+      let btn = buttons[i];
+      if (btn.parentElement === this._elementRef.nativeElement){
+        directChildren.push(btn as HTMLElement);
+      }
+    }
+    
+    if (this.activeIdx < 0 || this.activeIdx >= directChildren.length) {
+      return;
+    }
+    let elem = directChildren[this.activeIdx];
+    let result = isFullyVisibleVertically(elem, this._elementRef.nativeElement);
+    if (!result.isVisible) {
+      if (navUpwards) {
+        elem.parentElement.scrollTop = elem.offsetTop;
+      } else {
+        let scrollOffset = elem.offsetTop + elem.offsetHeight
+                            - elem.parentElement.offsetHeight;
+        elem.parentElement.scrollTop = scrollOffset;
+      }
+    }
+  }
+}
+
+function isFullyVisibleVertically(element: HTMLElement, rootElement: HTMLElement)
+  : { isVisible: boolean, topClipped?: boolean, bottomClipped?: boolean } {
+  let rect = element.getBoundingClientRect();
+  let top = rect.top;
+  let bottom = rect.bottom;
+  let el = element.parentNode;
+
+  do {
+    rect = (el as HTMLElement).getBoundingClientRect();
+    // element is below the bottom or clipping
+    if (top >= rect.bottom || bottom > rect.bottom) {
+      return { isVisible: false, topClipped: true };
+    }
+    // element is above the top or clipping
+    if (top < rect.top || bottom <= rect.top) {
+      return { isVisible: false, bottomClipped: true };
+    }
+
+    el = el.parentNode;
+    } while (el !== document.body && el !== rootElement);
+    // Check its within the document viewport
+    if (bottom > document.documentElement.clientHeight) {
+      return { isVisible: false, bottomClipped: true };
+    } else {
+      return { isVisible: true };
+  }
 }

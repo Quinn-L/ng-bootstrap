@@ -213,3 +213,5 @@ span.token.tag {
   font-size: 1em;
   padding: 0;
 }
+
+ngb-typeahead-window { z-index: 10000 !important; overflow-y: auto; max-height: 200px; }
