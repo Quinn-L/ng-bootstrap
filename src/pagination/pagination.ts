@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, Output, OnChanges, ChangeDetectionStrategy} from '@angular/core';
+import {Component, EventEmitter, Input, Output, OnChanges, ChangeDetectionStrategy, SimpleChanges} from '@angular/core';
 import {getValueInRange} from '../util/util';
 import {NgbPaginationConfig} from './pagination-config';
 
@@ -128,10 +128,10 @@ export class NgbPagination implements OnChanges {
       this.pageChange.emit(this.page);
     }
 
-    this.ngOnChanges();
+    this.ngOnChanges(null);
   }
 
-  ngOnChanges(): void {
+  ngOnChanges(changes: SimpleChanges): void {
     // re-calculate new length of pages
     this._pageCount = Math.ceil(this.collectionSize / this.pageSize);
 
@@ -226,5 +226,3 @@ export class NgbPagination implements OnChanges {
 
   private _getPageNoInRange(newPageNo): number { return getValueInRange(newPageNo, this._pageCount, 1); }
 }
-
-export const NGB_PAGINATION_DIRECTIVES = [NgbPagination];

@@ -1,4 +1,4 @@
-import {NgModule} from '@angular/core';
+import {NgModule, ModuleWithProviders} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {NgbDatepicker} from './datepicker';
 import {NgbDatepickerMonthView} from './datepicker-month-view';
@@ -13,6 +13,11 @@ import {NgbDatepickerService} from './datepicker-service';
 import {NgbDatepickerNavigationSelect} from './datepicker-navigation-select';
 import {NgbDatepickerConfig} from './datepicker-config';
 
+export {NgbDatepicker} from './datepicker';
+export {NgbDatepickerMonthView} from './datepicker-month-view';
+export {NgbDatepickerDayView} from './datepicker-day-view';
+export {NgbDatepickerNavigation} from './datepicker-navigation';
+export {NgbDatepickerNavigationSelect} from './datepicker-navigation-select';
 export {NgbDatepickerConfig} from './datepicker-config';
 export {NgbDatepickerI18n} from './datepicker-i18n';
 export {NgbDateStruct} from './ngb-date-struct';
@@ -25,12 +30,18 @@ export {NgbDateParserFormatter} from './ngb-date-parser-formatter';
   ],
   exports: [NgbDatepicker, NgbInputDatepicker],
   imports: [CommonModule, FormsModule],
-  entryComponents: [NgbDatepicker],
-  providers: [
-    {provide: NgbCalendar, useClass: NgbCalendarGregorian},
-    {provide: NgbDatepickerI18n, useClass: NgbDatepickerI18nDefault},
-    {provide: NgbDateParserFormatter, useClass: NgbDateISOParserFormatter}, NgbDatepickerService, NgbDatepickerConfig
-  ]
+  entryComponents: [NgbDatepicker]
 })
 export class NgbDatepickerModule {
+  static forRoot(): ModuleWithProviders {
+    return {
+      ngModule: NgbDatepickerModule,
+      providers: [
+        {provide: NgbCalendar, useClass: NgbCalendarGregorian},
+        {provide: NgbDatepickerI18n, useClass: NgbDatepickerI18nDefault},
+        {provide: NgbDateParserFormatter, useClass: NgbDateISOParserFormatter}, NgbDatepickerService,
+        NgbDatepickerConfig
+      ]
+    };
+  }
 }

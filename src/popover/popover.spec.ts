@@ -2,11 +2,16 @@ import {TestBed, ComponentFixture, inject} from '@angular/core/testing';
 import {createGenericTestComponent} from '../test/common';
 
 import {By} from '@angular/platform-browser';
-import {Component, ViewChild, ChangeDetectionStrategy} from '@angular/core';
+import {Component, ViewChild, ChangeDetectionStrategy, Injectable, OnDestroy} from '@angular/core';
 
 import {NgbPopoverModule} from './popover.module';
 import {NgbPopoverWindow, NgbPopover} from './popover';
 import {NgbPopoverConfig} from './popover-config';
+
+@Injectable()
+class SpyService {
+  called = false;
+}
 
 const createTestComponent = (html: string) =>
     createGenericTestComponent(html, TestComponent) as ComponentFixture<TestComponent>;
@@ -15,7 +20,9 @@ const createOnPushTestComponent =
     (html: string) => <ComponentFixture<TestOnPushComponent>>createGenericTestComponent(html, TestOnPushComponent);
 
 describe('ngb-popover-window', () => {
-  beforeEach(() => { TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbPopoverModule]}); });
+  beforeEach(() => {
+    TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbPopoverModule.forRoot()]});
+  });
 
   it('should render popover on top by default', () => {
     const fixture = TestBed.createComponent(NgbPopoverWindow);
@@ -39,7 +46,11 @@ describe('ngb-popover-window', () => {
 describe('ngb-popover', () => {
 
   beforeEach(() => {
-    TestBed.configureTestingModule({declarations: [TestComponent, TestOnPushComponent], imports: [NgbPopoverModule]});
+    TestBed.configureTestingModule({
+      declarations: [TestComponent, TestOnPushComponent, DestroyableCmpt],
+      imports: [NgbPopoverModule.forRoot()],
+      providers: [SpyService]
+    });
   });
 
   function getWindow(fixture) { return fixture.nativeElement.querySelector('ngb-popover-window'); }
@@ -83,6 +94,24 @@ describe('ngb-popover', () => {
       directive.triggerEventHandler('click', {});
       fixture.detectChanges();
       expect(getWindow(fixture)).toBeNull();
+    });
+
+    it('should properly destroy TemplateRef content', () => {
+      const fixture = createTestComponent(`
+          <template #t><destroyable-cmpt></destroyable-cmpt></template>
+          <div [ngbPopover]="t" popoverTitle="Title"></div>`);
+      const directive = fixture.debugElement.query(By.directive(NgbPopover));
+      const spyService = fixture.debugElement.injector.get(SpyService);
+
+      directive.triggerEventHandler('click', {});
+      fixture.detectChanges();
+      expect(getWindow(fixture)).not.toBeNull();
+      expect(spyService.called).toBeFalsy();
+
+      directive.triggerEventHandler('click', {});
+      fixture.detectChanges();
+      expect(getWindow(fixture)).toBeNull();
+      expect(spyService.called).toBeTruthy();
     });
 
     it('should allow re-opening previously closed popovers', () => {
@@ -162,8 +191,79 @@ describe('ngb-popover', () => {
     });
   });
 
+  describe('visibility', () => {
+    it('should emit events when showing and hiding popover', () => {
+      const fixture = createTestComponent(
+          `<div ngbPopover="Great tip!" triggers="click" (shown)="shown()" (hidden)="hidden()"></div>`);
+      const directive = fixture.debugElement.query(By.directive(NgbPopover));
+
+      let shownSpy = spyOn(fixture.componentInstance, 'shown');
+      let hiddenSpy = spyOn(fixture.componentInstance, 'hidden');
+
+      directive.triggerEventHandler('click', {});
+      fixture.detectChanges();
+      expect(getWindow(fixture)).not.toBeNull();
+      expect(shownSpy).toHaveBeenCalled();
+
+      directive.triggerEventHandler('click', {});
+      fixture.detectChanges();
+      expect(getWindow(fixture)).toBeNull();
+      expect(hiddenSpy).toHaveBeenCalled();
+    });
+
+    it('should not emit close event when already closed', () => {
+      const fixture = createTestComponent(
+          `<div ngbPopover="Great tip!" triggers="manual" (shown)="shown()" (hidden)="hidden()"></div>`);
+
+      let shownSpy = spyOn(fixture.componentInstance, 'shown');
+      let hiddenSpy = spyOn(fixture.componentInstance, 'hidden');
+
+      fixture.componentInstance.popover.open();
+      fixture.detectChanges();
+
+      fixture.componentInstance.popover.open();
+      fixture.detectChanges();
+
+      expect(getWindow(fixture)).not.toBeNull();
+      expect(shownSpy).toHaveBeenCalled();
+      expect(shownSpy.calls.count()).toEqual(1);
+      expect(hiddenSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not emit open event when already opened', () => {
+      const fixture = createTestComponent(
+          `<div ngbPopover="Great tip!" triggers="manual" (shown)="shown()" (hidden)="hidden()"></div>`);
+
+      let shownSpy = spyOn(fixture.componentInstance, 'shown');
+      let hiddenSpy = spyOn(fixture.componentInstance, 'hidden');
+
+      fixture.componentInstance.popover.close();
+      fixture.detectChanges();
+      expect(getWindow(fixture)).toBeNull();
+      expect(shownSpy).not.toHaveBeenCalled();
+      expect(hiddenSpy).not.toHaveBeenCalled();
+    });
+
+    it('should report correct visibility', () => {
+      const fixture = createTestComponent(`<div ngbPopover="Great tip!" triggers="manual"></div>`);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.popover.isOpen()).toBeFalsy();
+
+      fixture.componentInstance.popover.open();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.popover.isOpen()).toBeTruthy();
+
+      fixture.componentInstance.popover.close();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.popover.isOpen()).toBeFalsy();
+    });
+  });
+
   describe('triggers', () => {
-    beforeEach(() => { TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbPopoverModule]}); });
+    beforeEach(() => {
+      TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbPopoverModule.forRoot()]});
+    });
 
     it('should support toggle triggers', () => {
       const fixture = createTestComponent(`<div ngbPopover="Great tip!" triggers="click"></div>`);
@@ -274,7 +374,7 @@ describe('ngb-popover', () => {
     let config: NgbPopoverConfig;
 
     beforeEach(() => {
-      TestBed.configureTestingModule({imports: [NgbPopoverModule]});
+      TestBed.configureTestingModule({imports: [NgbPopoverModule.forRoot()]});
       TestBed.overrideComponent(TestComponent, {set: {template: `<div ngbPopover="Great tip!"></div>`}});
     });
 
@@ -302,7 +402,7 @@ describe('ngb-popover', () => {
 
     beforeEach(() => {
       TestBed.configureTestingModule(
-          {imports: [NgbPopoverModule], providers: [{provide: NgbPopoverConfig, useValue: config}]});
+          {imports: [NgbPopoverModule.forRoot()], providers: [{provide: NgbPopoverConfig, useValue: config}]});
     });
 
     it('should initialize inputs with provided config as provider', () => {
@@ -323,8 +423,18 @@ export class TestComponent {
   placement: string;
 
   @ViewChild(NgbPopover) popover: NgbPopover;
+
+  shown() {}
+  hidden() {}
 }
 
 @Component({selector: 'test-onpush-cmpt', changeDetection: ChangeDetectionStrategy.OnPush, template: ``})
 export class TestOnPushComponent {
+}
+
+@Component({selector: 'destroyable-cmpt', template: 'Some content'})
+export class DestroyableCmpt implements OnDestroy {
+  constructor(private _spyService: SpyService) {}
+
+  ngOnDestroy(): void { this._spyService.called = true; }
 }

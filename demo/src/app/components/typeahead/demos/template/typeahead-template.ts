@@ -63,6 +63,7 @@ const statesWithFlags = [
   styles: [`.form-control { width: 300px; }`]
 })
 export class NgbdTypeaheadTemplate {
+  public model: any;
 
   search = (text$: Observable<string>) =>
     text$

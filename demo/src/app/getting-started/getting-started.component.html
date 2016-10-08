@@ -8,7 +8,7 @@
   </p>
   <ul>
     <li>
-      <a href="https://angular.io" target="_blank">Angular</a> (<em>requires</em> Angular version 2 or higher, tested with 2.0.0-rc.7)
+      <a href="https://angular.io" target="_blank">Angular</a> (<em>requires</em> Angular version 2 or higher, tested with 2.0.0)
     </li>
     <li>
       <a href="http://v4-alpha.getbootstrap.com" target="_blank">Bootstrap CSS</a> (tested with 4.0.0-alpha.4)
@@ -26,11 +26,23 @@
 
 @NgModule(&#123;
   declarations: [AppComponent, ...],
-  imports: [NgbModule, ...],
+  imports: [NgbModule.forRoot(), ...],
   bootstrap: [AppComponent]
 })
 export class AppModule &#123;
 }</pre>
+  <h4>
+    SystemJS
+  </h4>
+  <p>
+    If you are using SystemJS, you should also adjust your configuration to point to the UMD bundle.
+  </p>
+  <p>
+    In your systemjs config file, <code>map</code> needs to tell the System loader where to look for <code>ng-bootstrap</code>:
+  </p>
+  <pre><code>map: &#123;
+  '@ng-bootstrap/ng-bootstrap': 'node_modules/@ng-bootstrap/ng-bootstrap/bundles/ng-bootstrap.js',
+}</code></pre>
   <h3>
     Getting Help
   </h3>

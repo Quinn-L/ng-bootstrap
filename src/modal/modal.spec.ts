@@ -1,10 +1,15 @@
-import {Component, ViewChild} from '@angular/core';
+import {Component, Injectable, ViewChild, OnDestroy, NgModule} from '@angular/core';
 import {TestBed, ComponentFixture} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 
-import {NgbModalModule, NgbModal, NgbModalRef} from './modal.module';
+import {NgbModalModule, NgbModal, NgbActiveModal, NgbModalRef} from './modal.module';
 
 const NOOP = () => {};
+
+@Injectable()
+class SpyService {
+  called = false;
+}
 
 describe('ngb-modal', () => {
 
@@ -63,7 +68,7 @@ describe('ngb-modal', () => {
   });
 
   beforeEach(() => {
-    TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbModalModule]});
+    TestBed.configureTestingModule({imports: [NgbModalTestModule]});
     fixture = TestBed.createComponent(TestComponent);
   });
 
@@ -85,6 +90,42 @@ describe('ngb-modal', () => {
       expect(fixture.nativeElement).toHaveModal('Hello, World!');
 
       modalInstance.close('some result');
+      fixture.detectChanges();
+      expect(fixture.nativeElement).not.toHaveModal();
+    });
+
+    it('should properly destroy TemplateRef content', () => {
+      const spyService = fixture.debugElement.injector.get(SpyService);
+      const modalInstance = fixture.componentInstance.openDestroyableTpl();
+      fixture.detectChanges();
+      expect(fixture.nativeElement).toHaveModal('Some content');
+      expect(spyService.called).toBeFalsy();
+
+      modalInstance.close('some result');
+      fixture.detectChanges();
+      expect(fixture.nativeElement).not.toHaveModal();
+      expect(spyService.called).toBeTruthy();
+    });
+
+    it('should open and close modal from a component type', () => {
+      const spyService = fixture.debugElement.injector.get(SpyService);
+      const modalInstance = fixture.componentInstance.openCmpt(DestroyableCmpt);
+      fixture.detectChanges();
+      expect(fixture.nativeElement).toHaveModal('Some content');
+      expect(spyService.called).toBeFalsy();
+
+      modalInstance.close('some result');
+      fixture.detectChanges();
+      expect(fixture.nativeElement).not.toHaveModal();
+      expect(spyService.called).toBeTruthy();
+    });
+
+    it('should inject active modal ref when component is used as content', () => {
+      fixture.componentInstance.openCmpt(WithActiveModalCmpt);
+      fixture.detectChanges();
+      expect(fixture.nativeElement).toHaveModal('Close');
+
+      fixture.debugElement.query(By.css('button.closeFromInside')).triggerEventHandler('click', {});
       fixture.detectChanges();
       expect(fixture.nativeElement).not.toHaveModal();
     });
@@ -288,6 +329,18 @@ describe('ngb-modal', () => {
       expect(fixture.nativeElement).toHaveModal('foo');
       expect(fixture.nativeElement.querySelector('.modal-dialog')).toHaveCssClass('modal-sm');
     });
+
+  });
+
+  describe('custom class options', () => {
+
+    it('should render modals with the correct custom classes', () => {
+      fixture.componentInstance.open('foo', {windowClass: 'bar'});
+      fixture.detectChanges();
+      expect(fixture.nativeElement).toHaveModal('foo');
+      expect(fixture.nativeElement.querySelector('ngb-modal-window')).toHaveCssClass('bar');
+    });
+
   });
 
   describe('focus management', () => {
@@ -320,11 +373,27 @@ describe('ngb-modal', () => {
   });
 });
 
+@Component({selector: 'destroyable-cmpt', template: 'Some content'})
+export class DestroyableCmpt implements OnDestroy {
+  constructor(private _spyService: SpyService) {}
+
+  ngOnDestroy(): void { this._spyService.called = true; }
+}
+
+@Component(
+    {selector: 'modal-content-cmpt', template: '<button class="closeFromInside" (click)="close()">Close</button>'})
+export class WithActiveModalCmpt {
+  constructor(public activeModal: NgbActiveModal) {}
+
+  close() { this.activeModal.close('from inside'); }
+}
+
 @Component({
   selector: 'test-cmpt',
   template: `
     <template ngbModalContainer></template>
     <template #content>Hello, {{name}}!</template>
+    <template #destroyableContent><destroyable-cmpt></destroyable-cmpt></template>
     <template #contentWithClose let-close="close"><button id="close" (click)="close('myResult')">Close me</button></template>
     <template #contentWithDismiss let-dismiss="dismiss"><button id="dismiss" (click)="dismiss('myReason')">Dismiss me</button></template>
     <button id="open" (click)="open('from button')">Open</button>
@@ -333,6 +402,7 @@ describe('ngb-modal', () => {
 class TestComponent {
   name = 'World';
   @ViewChild('content') tplContent;
+  @ViewChild('destroyableContent') tplDestroyableContent;
   @ViewChild('contentWithClose') tplContentWithClose;
   @ViewChild('contentWithDismiss') tplContentWithDismiss;
   openedModal: NgbModalRef;
@@ -349,6 +419,18 @@ class TestComponent {
     }
   }
   openTpl(options?: Object) { return this.modalService.open(this.tplContent, options); }
+  openCmpt(cmptType: any, options?: Object) { return this.modalService.open(cmptType, options); }
+  openDestroyableTpl(options?: Object) { return this.modalService.open(this.tplDestroyableContent, options); }
   openTplClose(options?: Object) { return this.modalService.open(this.tplContentWithClose, options); }
   openTplDismiss(options?: Object) { return this.modalService.open(this.tplContentWithDismiss, options); }
+}
+
+@NgModule({
+  declarations: [TestComponent, DestroyableCmpt, WithActiveModalCmpt],
+  exports: [TestComponent, DestroyableCmpt],
+  imports: [NgbModalModule.forRoot()],
+  entryComponents: [DestroyableCmpt, WithActiveModalCmpt],
+  providers: [SpyService]
+})
+class NgbModalTestModule {
 }

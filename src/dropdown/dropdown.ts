@@ -81,18 +81,12 @@ export class NgbDropdown {
     }
   }
 
-  /**
-   * @internal
-   */
   closeFromOutsideClick($event) {
     if (this.autoClose && !this._isEventFromToggle($event)) {
       this.close();
     }
   }
 
-  /**
-   * @internal
-   */
   closeFromOutsideEsc() {
     if (this.autoClose) {
       this.close();
@@ -104,7 +98,7 @@ export class NgbDropdown {
    */
   set toggleElement(toggleElement: any) { this._toggleElement = toggleElement; }
 
-  private _isEventFromToggle($event) { return $event.target === this._toggleElement; }
+  private _isEventFromToggle($event) { return !!this._toggleElement && this._toggleElement.contains($event.target); }
 }
 
 /**

@@ -30,7 +30,9 @@ function expectActiveSlides(nativeEl: HTMLDivElement, active: boolean[]) {
 }
 
 describe('ngb-carousel', () => {
-  beforeEach(() => { TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbCarouselModule]}); });
+  beforeEach(() => {
+    TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbCarouselModule.forRoot()]});
+  });
 
   it('should initialize inputs with default values', () => {
     const defaultConfig = new NgbCarouselConfig();
@@ -196,6 +198,29 @@ describe('ngb-carousel', () => {
        discardPeriodicTasks();
      }));
 
+  it('should not change slide on time passage (custom interval value is zero)', fakeAsync(() => {
+       const html = `
+      <ngb-carousel [interval]="0">
+        <template ngbSlide>foo</template>
+        <template ngbSlide>bar</template>
+      </ngb-carousel>
+    `;
+
+       const fixture = createTestComponent(html);
+
+       expectActiveSlides(fixture.nativeElement, [true, false]);
+
+       tick(1000);
+       fixture.detectChanges();
+       expectActiveSlides(fixture.nativeElement, [true, false]);
+
+       tick(1200);
+       fixture.detectChanges();
+       expectActiveSlides(fixture.nativeElement, [true, false]);
+
+       discardPeriodicTasks();
+     }));
+
   it('should pause / resume slide change with time passage on mouse enter / leave', fakeAsync(() => {
        const html = `
       <ngb-carousel>
@@ -347,7 +372,7 @@ describe('ngb-carousel', () => {
   describe('Custom config', () => {
     let config: NgbCarouselConfig;
 
-    beforeEach(() => { TestBed.configureTestingModule({imports: [NgbCarouselModule]}); });
+    beforeEach(() => { TestBed.configureTestingModule({imports: [NgbCarouselModule.forRoot()]}); });
 
     beforeEach(inject([NgbCarouselConfig], (c: NgbCarouselConfig) => {
       config = c;
@@ -375,7 +400,7 @@ describe('ngb-carousel', () => {
 
     beforeEach(() => {
       TestBed.configureTestingModule(
-          {imports: [NgbCarouselModule], providers: [{provide: NgbCarouselConfig, useValue: config}]});
+          {imports: [NgbCarouselModule.forRoot()], providers: [{provide: NgbCarouselConfig, useValue: config}]});
     });
 
     it('should initialize inputs with provided config as provider', () => {

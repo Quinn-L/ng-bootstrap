@@ -47,14 +47,15 @@ export class NgbInputDatepicker implements ControlValueAccessor {
   @Input() dayTemplate: TemplateRef<DayTemplateContext>;
 
   /**
-   * First day of the week, 0=Sun, 1=Mon, etc.
+  * First day of the week. With default calendar we use ISO 8601: 1=Mon ... 7=Sun
    */
   @Input() firstDayOfWeek: number;
 
   /**
-   * Callback to mark a given date as disabled
+   * Callback to mark a given date as disabled.
+   * 'Current' contains the month that will be displayed in the view
    */
-  @Input() markDisabled: (date: NgbDateStruct) => boolean;
+  @Input() markDisabled: (date: NgbDateStruct, current: {year: number, month: number}) => boolean;
 
   /**
    * Min date for the navigation. If not provided will be 10 years before today or `startDate`
@@ -67,7 +68,7 @@ export class NgbInputDatepicker implements ControlValueAccessor {
   @Input() maxDate: NgbDateStruct;
 
   /**
-   * Whether to display navigation or not
+   * Whether to display navigation
    */
   @Input() showNavigation: boolean;
 
@@ -82,7 +83,9 @@ export class NgbInputDatepicker implements ControlValueAccessor {
   @Input() showWeekNumbers: boolean;
 
   /**
-   * Date to open calendar with. If nothing provided, calendar will open with current month.
+   * Date to open calendar with.
+   * With default calendar we use ISO 8601: 'month' is 1=Jan ... 12=Dec.
+   * If nothing provided, calendar will open with current month.
    * Use 'navigateTo(date)' as an alternative
    */
   @Input() startDate: {year: number, month: number};
@@ -117,9 +120,6 @@ export class NgbInputDatepicker implements ControlValueAccessor {
     }
   }
 
-  /**
-   * @internal
-   */
   manualDateChange(value: string) {
     this._model = NgbDate.from(this._parserFormatter.parse(value));
     this._onChange(this._model ? {year: this._model.year, month: this._model.month, day: this._model.day} : null);
@@ -172,7 +172,9 @@ export class NgbInputDatepicker implements ControlValueAccessor {
   }
 
   /**
-   * Navigates current view to provided date. If nothing provided calendar will open current month.
+   * Navigates current view to provided date.
+   * With default calendar we use ISO 8601: 'month' is 1=Jan ... 12=Dec.
+   * If nothing provided calendar will open current month.
    * Use 'startDate' input as an alternative
    */
   navigateTo(date?: {year: number, month: number}) {
@@ -183,12 +185,13 @@ export class NgbInputDatepicker implements ControlValueAccessor {
 
   private _applyDatepickerInputs(datepickerInstance: NgbDatepicker): void {
     ['dayTemplate', 'firstDayOfWeek', 'markDisabled', 'minDate', 'maxDate', 'showNavigation', 'showWeekdays',
-     'showWeekNumbers', 'startDate']
+     'showWeekNumbers']
         .forEach((optionName: string) => {
           if (this[optionName] !== undefined) {
             datepickerInstance[optionName] = this[optionName];
           }
         });
+    datepickerInstance.startDate = this.startDate || this._model;
   }
 
   private _applyPopupStyling(nativeElement: any) {

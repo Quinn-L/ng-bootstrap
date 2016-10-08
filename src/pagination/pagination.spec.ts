@@ -71,49 +71,49 @@ describe('ngb-pagination', () => {
 
     it('should calculate and update no of pages (default page size)', () => {
       pagination.collectionSize = 100;
-      pagination.ngOnChanges();
+      pagination.ngOnChanges(null);
       expect(pagination.pages.length).toEqual(10);
 
       pagination.collectionSize = 200;
-      pagination.ngOnChanges();
+      pagination.ngOnChanges(null);
       expect(pagination.pages.length).toEqual(20);
     });
 
     it('should calculate and update no of pages (custom page size)', () => {
       pagination.collectionSize = 100;
       pagination.pageSize = 20;
-      pagination.ngOnChanges();
+      pagination.ngOnChanges(null);
       expect(pagination.pages.length).toEqual(5);
 
       pagination.collectionSize = 200;
-      pagination.ngOnChanges();
+      pagination.ngOnChanges(null);
       expect(pagination.pages.length).toEqual(10);
 
       pagination.pageSize = 10;
-      pagination.ngOnChanges();
+      pagination.ngOnChanges(null);
       expect(pagination.pages.length).toEqual(20);
     });
 
     it('should allow setting a page within a valid range (default page size)', () => {
       pagination.collectionSize = 100;
       pagination.page = 2;
-      pagination.ngOnChanges();
+      pagination.ngOnChanges(null);
       expect(pagination.page).toEqual(2);
     });
 
     it('should auto-correct page no if outside of valid range (default page size)', () => {
       pagination.collectionSize = 100;
       pagination.page = 100;
-      pagination.ngOnChanges();
+      pagination.ngOnChanges(null);
       expect(pagination.page).toEqual(10);
 
       pagination.page = -100;
-      pagination.ngOnChanges();
+      pagination.ngOnChanges(null);
       expect(pagination.page).toEqual(1);
 
       pagination.page = 5;
       pagination.collectionSize = 10;
-      pagination.ngOnChanges();
+      pagination.ngOnChanges(null);
       expect(pagination.page).toEqual(1);
     });
 
@@ -121,7 +121,7 @@ describe('ngb-pagination', () => {
       pagination.collectionSize = 100;
       pagination.pageSize = 20;
       pagination.page = 2;
-      pagination.ngOnChanges();
+      pagination.ngOnChanges(null);
       expect(pagination.page).toEqual(2);
     });
 
@@ -129,8 +129,9 @@ describe('ngb-pagination', () => {
 
   describe('UI logic', () => {
 
-    beforeEach(
-        () => { TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbPaginationModule]}); });
+    beforeEach(() => {
+      TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbPaginationModule.forRoot()]});
+    });
 
     it('should render and respond to collectionSize change', () => {
       const html = '<ngb-pagination [collectionSize]="collectionSize" [page]="1"></ngb-pagination>';
@@ -422,7 +423,7 @@ describe('ngb-pagination', () => {
   describe('Custom config', () => {
     let config: NgbPaginationConfig;
 
-    beforeEach(() => { TestBed.configureTestingModule({imports: [NgbPaginationModule]}); });
+    beforeEach(() => { TestBed.configureTestingModule({imports: [NgbPaginationModule.forRoot()]}); });
 
     beforeEach(inject([NgbPaginationConfig], (c: NgbPaginationConfig) => {
       config = c;
@@ -456,7 +457,7 @@ describe('ngb-pagination', () => {
 
     beforeEach(() => {
       TestBed.configureTestingModule(
-          {imports: [NgbPaginationModule], providers: [{provide: NgbPaginationConfig, useValue: config}]});
+          {imports: [NgbPaginationModule.forRoot()], providers: [{provide: NgbPaginationConfig, useValue: config}]});
     });
 
     it('should initialize inputs with provided config as provider', () => {

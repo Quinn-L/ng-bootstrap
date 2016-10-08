@@ -15,7 +15,7 @@ const createOnPushTestComponent =
     (html: string) => <ComponentFixture<TestOnPushComponent>>createGenericTestComponent(html, TestOnPushComponent);
 
 describe('ngb-tooltip-window', () => {
-  beforeEach(() => { TestBed.configureTestingModule({imports: [NgbTooltipModule]}); });
+  beforeEach(() => { TestBed.configureTestingModule({imports: [NgbTooltipModule.forRoot()]}); });
 
   it('should render tooltip on top by default', () => {
     const fixture = TestBed.createComponent(NgbTooltipWindow);
@@ -37,7 +37,8 @@ describe('ngb-tooltip-window', () => {
 describe('ngb-tooltip', () => {
 
   beforeEach(() => {
-    TestBed.configureTestingModule({declarations: [TestComponent, TestOnPushComponent], imports: [NgbTooltipModule]});
+    TestBed.configureTestingModule(
+        {declarations: [TestComponent, TestOnPushComponent], imports: [NgbTooltipModule.forRoot()]});
   });
 
   function getWindow(fixture) { return fixture.nativeElement.querySelector('ngb-tooltip-window'); }
@@ -292,11 +293,80 @@ describe('ngb-tooltip', () => {
     });
   });
 
+  describe('visibility', () => {
+    it('should emit events when showing and hiding popover', () => {
+      const fixture = createTestComponent(
+          `<div ngbTooltip="Great tip!" triggers="click" (shown)="shown()" (hidden)="hidden()"></div>`);
+      const directive = fixture.debugElement.query(By.directive(NgbTooltip));
+
+      let shownSpy = spyOn(fixture.componentInstance, 'shown');
+      let hiddenSpy = spyOn(fixture.componentInstance, 'hidden');
+
+      directive.triggerEventHandler('click', {});
+      fixture.detectChanges();
+      expect(getWindow(fixture)).not.toBeNull();
+      expect(shownSpy).toHaveBeenCalled();
+
+      directive.triggerEventHandler('click', {});
+      fixture.detectChanges();
+      expect(getWindow(fixture)).toBeNull();
+      expect(hiddenSpy).toHaveBeenCalled();
+    });
+
+    it('should not emit close event when already closed', () => {
+      const fixture = createTestComponent(
+          `<div ngbTooltip="Great tip!" triggers="manual" (shown)="shown()" (hidden)="hidden()"></div>`);
+
+      let shownSpy = spyOn(fixture.componentInstance, 'shown');
+      let hiddenSpy = spyOn(fixture.componentInstance, 'hidden');
+
+      fixture.componentInstance.tooltip.open();
+      fixture.detectChanges();
+
+      fixture.componentInstance.tooltip.open();
+      fixture.detectChanges();
+
+      expect(getWindow(fixture)).not.toBeNull();
+      expect(shownSpy).toHaveBeenCalled();
+      expect(shownSpy.calls.count()).toEqual(1);
+      expect(hiddenSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not emit open event when already opened', () => {
+      const fixture = createTestComponent(
+          `<div ngbTooltip="Great tip!" triggers="manual" (shown)="shown()" (hidden)="hidden()"></div>`);
+
+      let shownSpy = spyOn(fixture.componentInstance, 'shown');
+      let hiddenSpy = spyOn(fixture.componentInstance, 'hidden');
+
+      fixture.componentInstance.tooltip.close();
+      fixture.detectChanges();
+      expect(getWindow(fixture)).toBeNull();
+      expect(shownSpy).not.toHaveBeenCalled();
+      expect(hiddenSpy).not.toHaveBeenCalled();
+    });
+
+    it('should report correct visibility', () => {
+      const fixture = createTestComponent(`<div ngbTooltip="Great tip!" triggers="manual"></div>`);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.tooltip.isOpen()).toBeFalsy();
+
+      fixture.componentInstance.tooltip.open();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.tooltip.isOpen()).toBeTruthy();
+
+      fixture.componentInstance.tooltip.close();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.tooltip.isOpen()).toBeFalsy();
+    });
+  });
+
   describe('Custom config', () => {
     let config: NgbTooltipConfig;
 
     beforeEach(() => {
-      TestBed.configureTestingModule({imports: [NgbTooltipModule]});
+      TestBed.configureTestingModule({imports: [NgbTooltipModule.forRoot()]});
       TestBed.overrideComponent(TestComponent, {set: {template: `<div ngbTooltip="Great tip!"></div>`}});
     });
 
@@ -323,7 +393,7 @@ describe('ngb-tooltip', () => {
 
     beforeEach(() => {
       TestBed.configureTestingModule(
-          {imports: [NgbTooltipModule], providers: [{provide: NgbTooltipConfig, useValue: config}]});
+          {imports: [NgbTooltipModule.forRoot()], providers: [{provide: NgbTooltipConfig, useValue: config}]});
     });
 
     it('should initialize inputs with provided config as provider', () => {
@@ -342,6 +412,9 @@ export class TestComponent {
   show = true;
 
   @ViewChild(NgbTooltip) tooltip: NgbTooltip;
+
+  shown() {}
+  hidden() {}
 }
 
 @Component({selector: 'test-onpush-cmpt', changeDetection: ChangeDetectionStrategy.OnPush, template: ``})

@@ -12,11 +12,7 @@ const createTestComponent = (html: string) =>
 
 function getAriaState(compiled) {
   const stars = getStars(compiled, '.sr-only');
-  let state = [];
-  for (let i = 0, l = stars.length; i < l; i++) {
-    state.push((stars[i].textContent === '(*)' && stars[i].textContent !== '( )'));
-  }
-  return state;
+  return stars.map(star => star.textContent === '(*)' && star.textContent !== '( )');
 }
 
 function getStar(compiled, num: number) {
@@ -24,20 +20,22 @@ function getStar(compiled, num: number) {
 }
 
 function getStars(element, selector = 'span > span:not(.sr-only)') {
-  return element.querySelectorAll(selector);
+  return <HTMLElement[]>Array.from(element.querySelectorAll(selector));
 }
 
 function getState(compiled) {
   const stars = getStars(compiled);
-  let state = [];
-  for (let i = 0, l = stars.length; i < l; i++) {
-    state.push((stars[i].textContent === String.fromCharCode(9733)));
-  }
-  return state;
+  return stars.map(star => star.textContent.trim() === String.fromCharCode(9733));
+}
+
+function getStateText(compiled) {
+  const stars = getStars(compiled);
+  return stars.map(star => star.textContent.trim());
 }
 
 describe('ngb-rating', () => {
-  beforeEach(() => { TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbRatingModule]}); });
+  beforeEach(
+      () => { TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbRatingModule.forRoot()]}); });
 
   it('should initialize inputs with default values', () => {
     const defaultConfig = new NgbRatingConfig();
@@ -90,12 +88,71 @@ describe('ngb-rating', () => {
     expect(window.getComputedStyle(getStar(compiled, 1)).getPropertyValue('cursor')).toBe('pointer');
   });
 
-  it('should set not allowed cursor on stars when readonly', () => {
+  it('should set default cursor on stars when readonly', () => {
     const fixture = createTestComponent('<ngb-rating [readonly]="true"></ngb-rating>');
 
     const compiled = fixture.nativeElement;
 
-    expect(window.getComputedStyle(getStar(compiled, 1)).getPropertyValue('cursor')).toBe('not-allowed');
+    expect(window.getComputedStyle(getStar(compiled, 1)).getPropertyValue('cursor')).toBe('default');
+  });
+
+  it('should allow custom star template', () => {
+    const fixture = createTestComponent(`
+      <template #t let-fill="fill">{{ fill === 100 ? 'x' : 'o' }}</template>
+      <ngb-rating [starTemplate]="t" rate="2" max="4"></ngb-rating>`);
+
+    const compiled = fixture.nativeElement;
+    expect(getStateText(compiled)).toEqual(['x', 'x', 'o', 'o']);
+  });
+
+  it('should allow custom template as a child element', () => {
+    const fixture = createTestComponent(`
+      <ngb-rating rate="2" max="4">
+        <template let-fill="fill">{{ fill === 100 ? 'x' : 'o' }}</template>
+      </ngb-rating>`);
+
+    const compiled = fixture.nativeElement;
+    expect(getStateText(compiled)).toEqual(['x', 'x', 'o', 'o']);
+  });
+
+  it('should prefer explicitly set custom template to a child one', () => {
+    const fixture = createTestComponent(`
+      <template #t let-fill="fill">{{ fill === 100 ? 'a' : 'b' }}</template>
+      <ngb-rating [starTemplate]="t" rate="2" max="4">
+        <template let-fill="fill">{{ fill === 100 ? 'c' : 'd' }}</template>
+      </ngb-rating>`);
+
+    const compiled = fixture.nativeElement;
+    expect(getStateText(compiled)).toEqual(['a', 'a', 'b', 'b']);
+  });
+
+  it('should calculate fill percentage correctly', () => {
+    const fixture = createTestComponent(`
+      <template #t let-fill="fill">{{fill}}</template>
+      <ngb-rating [starTemplate]="t" [rate]="rate" max="4"></ngb-rating>`);
+
+    const compiled = fixture.nativeElement;
+    expect(getStateText(compiled)).toEqual(['100', '100', '100', '0']);
+
+    fixture.componentInstance.rate = 0;
+    fixture.detectChanges();
+    expect(getStateText(compiled)).toEqual(['0', '0', '0', '0']);
+
+    fixture.componentInstance.rate = 2.2;
+    fixture.detectChanges();
+    expect(getStateText(compiled)).toEqual(['100', '100', '20', '0']);
+
+    fixture.componentInstance.rate = 2.25;
+    fixture.detectChanges();
+    expect(getStateText(compiled)).toEqual(['100', '100', '25', '0']);
+
+    fixture.componentInstance.rate = 2.2548;
+    fixture.detectChanges();
+    expect(getStateText(compiled)).toEqual(['100', '100', '25', '0']);
+
+    fixture.componentInstance.rate = 7;
+    fixture.detectChanges();
+    expect(getStateText(compiled)).toEqual(['100', '100', '100', '100']);
   });
 
   describe('aria support', () => {
@@ -147,7 +204,7 @@ describe('ngb-rating', () => {
   describe('Custom config', () => {
     let config: NgbRatingConfig;
 
-    beforeEach(() => { TestBed.configureTestingModule({imports: [NgbRatingModule]}); });
+    beforeEach(() => { TestBed.configureTestingModule({imports: [NgbRatingModule.forRoot()]}); });
 
     beforeEach(inject([NgbRatingConfig], (c: NgbRatingConfig) => {
       config = c;
@@ -172,7 +229,7 @@ describe('ngb-rating', () => {
 
     beforeEach(() => {
       TestBed.configureTestingModule(
-          {imports: [NgbRatingModule], providers: [{provide: NgbRatingConfig, useValue: config}]});
+          {imports: [NgbRatingModule.forRoot()], providers: [{provide: NgbRatingConfig, useValue: config}]});
     });
 
     it('should initialize inputs with provided config as provider', () => {
@@ -188,5 +245,6 @@ describe('ngb-rating', () => {
 
 @Component({selector: 'test-cmp', template: ''})
 class TestComponent {
-  max: number = 10;
+  max = 10;
+  rate = 3;
 }
