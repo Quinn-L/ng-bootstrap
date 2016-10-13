@@ -16,13 +16,15 @@ import {
   NgZone
 } from '@angular/core';
 import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
-import {Observable, Subscription} from 'rxjs/Rx';
+import {Observable} from 'rxjs/Observable';
+import {Subscription} from 'rxjs/Subscription';
+import 'rxjs/add/observable/fromEvent';
 import 'rxjs/add/operator/do';
 import 'rxjs/add/operator/let';
 import {positionElements} from '../util/positioning';
 import {NgbTypeaheadWindow, ResultTemplateContext} from './typeahead-window';
 import {PopupService} from '../util/popup';
-import {toString} from '../util/util';
+import {toString, isDefined} from '../util/util';
 import {NgbTypeaheadConfig} from './typeahead-config';
 
 enum Key {
@@ -88,6 +90,11 @@ export class NgbTypeahead implements ControlValueAccessor,
   @Input() editable: boolean;
 
   /**
+   * A flag indicating if the first match should automatically be focused as you type.
+   */
+  @Input() focusFirst: boolean;
+
+  /**
    * A function to convert a given value into string to display in the input field
    */
   @Input() inputFormatter: (value: any) => string;
@@ -126,6 +133,7 @@ export class NgbTypeahead implements ControlValueAccessor,
       private _injector: Injector, componentFactoryResolver: ComponentFactoryResolver, config: NgbTypeaheadConfig,
       ngZone: NgZone) {
     this.editable = config.editable;
+    this.focusFirst = config.focusFirst;
     this.showHint = config.showHint;
 
     this._valueChanges = Observable.fromEvent(_elementRef.nativeElement, 'input', ($event) => $event.target.value);
@@ -141,7 +149,6 @@ export class NgbTypeahead implements ControlValueAccessor,
     });
   }
 
-    this._closePopup();
   ngOnInit() {
     this._subscription = this._subscribeToUserInput(
         this._valueChanges
@@ -200,7 +207,10 @@ export class NgbTypeahead implements ControlValueAccessor,
         case Key.Enter:
         case Key.Tab:
           const result = this._windowRef.instance.getActive();
-          this._selectResult(result);
+          if (isDefined(result)) {
+            this._selectResult(result);
+          }
+          this._closePopup();
           break;
         case Key.Escape:
           this.dismissPopup();
@@ -212,7 +222,7 @@ export class NgbTypeahead implements ControlValueAccessor,
   private _openPopup() {
     if (!this._windowRef) {
       this._windowRef = this._popupService.open(null, true);
-      this._windowRef.instance.selectEvent.subscribe((result: any) => this._selectResult(result));
+      this._windowRef.instance.selectEvent.subscribe((result: any) => this._selectResultClosePopup(result));
       this._scrollListener = (ev: UIEvent) => {
         // document level event  also triggers ngAfterViewChecked
         if (ev.target === document) {
@@ -239,7 +249,10 @@ export class NgbTypeahead implements ControlValueAccessor,
       this.writeValue(result);
       this._onChange(result);
     }
+  }
 
+  private _selectResultClosePopup(result: any) {
+    this._selectResult(result);
     this._closePopup();
   }
 
@@ -272,6 +285,7 @@ export class NgbTypeahead implements ControlValueAccessor,
         this._closePopup();
       } else {
         this._openPopup();
+        this._windowRef.instance.activeIdx = this.focusFirst ? 0 : -1;
         this._windowRef.instance.results = results;
         this._windowRef.instance.term = this._elementRef.nativeElement.value;
         if (this.resultFormatter) {

@@ -1,13 +1,10 @@
 var gulp = require('gulp');
-var ts = require('gulp-typescript');
 var gutil = require('gulp-util');
-var sourcemaps = require('gulp-sourcemaps');
 var ddescribeIit = require('gulp-ddescribe-iit');
 var shell = require('gulp-shell');
 var ghPages = require('gulp-gh-pages');
 var gulpFile = require('gulp-file');
 var del = require('del');
-var merge = require('merge2');
 var clangFormat = require('clang-format');
 var gulpFormat = require('gulp-clang-format');
 var runSequence = require('run-sequence');
@@ -15,7 +12,8 @@ var tslint = require('gulp-tslint');
 var webpack = require('webpack');
 var typescript = require('typescript');
 var exec = require('child_process').exec;
-var isWin = /^win/.test(process.platform);
+var path = require('path');
+var os = require('os');
 
 var PATHS = {
   src: 'src/**/*.ts',
@@ -28,6 +26,10 @@ var PATHS = {
   jasmineTypings: 'typings/globals/jasmine/index.d.ts',
   demoApiDocs: 'demo/src'
 };
+
+function platformPath(path) {
+  return /^win/.test(os.platform()) ? `${path}.cmd` : path;
+}
 
 function webpackCallBack(taskName, gulpDone) {
   return function(err, stats) {
@@ -42,7 +44,7 @@ function webpackCallBack(taskName, gulpDone) {
 gulp.task('clean:build', function() { return del('dist/'); });
 
 gulp.task('ngc', function(cb) {
-  var executable = isWin ? 'node_modules\\.bin\\ngc.cmd' : './node_modules/.bin/ngc';
+  var executable = path.join(__dirname, platformPath('/node_modules/.bin/ngc'));
   exec(`${executable} -p ./tsconfig-es2015.json`, (e) => {
     if (e) console.log(e);
     del('./dist/waste');
@@ -56,24 +58,30 @@ gulp.task('umd', function(cb) {
     return {root: ['ng', ns], commonjs: ng2Ns, commonjs2: ng2Ns, amd: ng2Ns};
   }
 
+  function rxjsExternal(context, request, cb) {
+    if (/^rxjs\/add\/observable\//.test(request)) {
+      return cb(null, {root: ['Rx', 'Observable'], commonjs: request, commonjs2: request, amd: request});
+    } else if (/^rxjs\/add\/operator\//.test(request)) {
+      return cb(null, {root: ['Rx', 'Observable', 'prototype'], commonjs: request, commonjs2: request, amd: request});
+    } else if (/^rxjs\//.test(request)) {
+      return cb(null, {root: ['Rx'], commonjs: request, commonjs2: request, amd: request});
+    }
+    cb();
+  }
+
   webpack(
       {
         entry: './temp/index.js',
         output: {filename: 'dist/bundles/ng-bootstrap.js', library: 'ngb', libraryTarget: 'umd'},
         devtool: 'source-map',
-        externals: {
-          '@angular/core': ngExternal('core'),
-          '@angular/common': ngExternal('common'),
-          '@angular/forms': ngExternal('forms'),
-          'rxjs/Rx': {root: 'Rx', commonjs: 'rxjs/Rx', commonjs2: 'rxjs/Rx', amd: 'rxjs/Rx'},
-          // 'rxjs/add/operator/let': 'rxjs/add/operator/let'
-          'rxjs/add/operator/let': {
-            root: ['Rx', 'Observable', 'prototype'],
-            commonjs: 'rxjs/add/operator/let',
-            commonjs2: 'rxjs/add/operator/let',
-            amd: 'rxjs/add/operator/let'
-          }
-        }
+        externals: [
+          {
+            '@angular/core': ngExternal('core'),
+            '@angular/common': ngExternal('common'),
+            '@angular/forms': ngExternal('forms')
+          },
+          rxjsExternal
+        ]
       },
       webpackCallBack('webpack', cb));
 });
@@ -114,8 +122,6 @@ gulp.task('changelog', function() {
 
 // Testing
 
-var testProject = ts.createProject('tsconfig.json', {typescript: typescript});
-
 function startKarmaServer(isTddMode, isSaucelabs, done) {
   var karmaServer = require('karma').Server;
   var travis = process.env.TRAVIS;
@@ -143,29 +149,37 @@ function startKarmaServer(isTddMode, isSaucelabs, done) {
 
 gulp.task('clean:tests', function() { return del('temp/'); });
 
-gulp.task('build:tests', function() {
-  var tsResult = gulp.src([PATHS.src, PATHS.typings]).pipe(sourcemaps.init()).pipe(ts(testProject));
-
-  return tsResult.js.pipe(sourcemaps.write('.')).pipe(gulp.dest('temp'));
+gulp.task('build:tests', ['clean:tests'], (cb) => {
+  exec(path.join(__dirname, platformPath('/node_modules/.bin/tsc')), (e) => {
+    if (e) console.log(e);
+    cb();
+  }).stdout.on('data', function(data) { console.log(data); });
 });
-
-gulp.task('clean:build-tests', function(done) { runSequence('clean:tests', 'build:tests', done); });
 
 gulp.task(
     'ddescribe-iit', function() { return gulp.src(PATHS.specs).pipe(ddescribeIit({allowDisabledTests: false})); });
 
-gulp.task('test', ['clean:build-tests'], function(done) { startKarmaServer(false, false, done); });
+gulp.task('test', ['build:tests'], function(done) { startKarmaServer(false, false, done); });
 
-gulp.task('tdd', ['clean:build-tests'], function(done) {
-  startKarmaServer(true, false, function(err) {
-    done(err);
-    process.exit(1);
+gulp.task('tdd', ['clean:tests'], (cb) => {
+  var executable = path.join(__dirname, platformPath('/node_modules/.bin/tsc'));
+  var startedKarma = false;
+
+  exec(`${executable} -w`, (e) => {
+    cb(e && e.signal !== 'SIGINT' ? e : undefined);
+  }).stdout.on('data', function(data) {
+
+    console.log(data);
+
+    // starting karma in tdd as soon as 'tsc -w' finishes first compilation
+    if (!startedKarma) {
+      startedKarma = true;
+      startKarmaServer(true, false, function(err) { process.exit(err ? 1 : 0); });
+    }
   });
-
-  gulp.watch(PATHS.src, ['build:tests']);
 });
 
-gulp.task('saucelabs', ['clean:build-tests'], function(done) {
+gulp.task('saucelabs', ['build:tests'], function(done) {
   startKarmaServer(false, true, function(err) {
     done(err);
     process.exit(err ? 1 : 0);
