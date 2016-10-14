@@ -15,7 +15,7 @@ const ANGULAR_LIFECYCLE_METHODS = [
 
 function isInternalMember(member) {
   const jsDoc = ts.displayPartsToString(member.symbol.getDocumentationComment());
-  return jsDoc.indexOf('@internal') > -1;
+  return jsDoc.trim().length === 0 || jsDoc.indexOf('@internal') > -1;
 }
 
 function isAngularLifecycleHook(methodName) {
@@ -37,6 +37,11 @@ class APIDocVisitor {
 
     if (!sourceFile) {
       throw new Error(`File doesn't exist: ${fileName}.`)
+    }
+
+    // don't extract anything from typings
+    if (/typings/.test(fileName)) {
+      return [];
     }
 
     return sourceFile.statements.reduce((directivesSoFar, statement) => {
