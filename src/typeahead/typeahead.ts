@@ -61,6 +61,7 @@ export interface NgbTypeaheadSelectItemEvent {
  */
 @Directive({
   selector: 'input[ngbTypeahead]',
+  exportAs: 'ngbTypeahead',
   host: {
     '(blur)': 'handleBlur()',
     '[class.open]': 'isPopupOpen()',
