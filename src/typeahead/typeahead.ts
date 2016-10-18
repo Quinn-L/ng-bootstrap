@@ -220,6 +220,25 @@ export class NgbTypeahead implements ControlValueAccessor,
     }
   }
 
+  showPopup(results: any[]) {
+    this._openPopup();
+    this._windowRef.instance.activeIdx = this.focusFirst ? 0 : -1;
+    this._windowRef.instance.results = results;
+    this._windowRef.instance.term = this._elementRef.nativeElement.value;
+    if (this.resultFormatter) {
+      this._windowRef.instance.formatter = this.resultFormatter;
+    }
+    if (this.resultTemplate) {
+      this._windowRef.instance.resultTemplate = this.resultTemplate;
+    }
+    this._showHint();
+
+    // The observable stream we are subscribing to might have async steps
+    // and if a component containing typeahead is using the OnPush strategy
+    // the change detection turn wouldn't be invoked automatically.
+    this._windowRef.changeDetectorRef.detectChanges();
+  }
+
   private _openPopup() {
     if (!this._windowRef) {
       this._windowRef = this._popupService.open(null, true);
