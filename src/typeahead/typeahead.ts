@@ -65,7 +65,7 @@ export interface NgbTypeaheadSelectItemEvent {
   host: {
     '(blur)': 'handleBlur()',
     '[class.open]': 'isPopupOpen()',
-    '(document:click)': 'dismissPopup()',
+    '(document:click)': 'dismissPopup($event)',
     '(keydown)': 'handleKeyDown($event)',
     'autocomplete': 'off',
     'autocapitalize': 'off',
@@ -177,7 +177,11 @@ export class NgbTypeahead implements ControlValueAccessor,
     this._renderer.setElementProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
   }
 
-  dismissPopup() {
+  dismissPopup($event?: MouseEvent) {
+    if ($event && $event.defaultPrevented) {
+      return;
+    }
+
     if (this.isPopupOpen()) {
       this._closePopup();
       this._writeInputValue(this._userInput);
