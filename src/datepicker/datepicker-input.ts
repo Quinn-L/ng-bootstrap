@@ -33,7 +33,7 @@ const NGB_DATEPICKER_VALUE_ACCESSOR = {
 @Directive({
   selector: 'input[ngbDatepicker]',
   exportAs: 'ngbDatepicker',
-  host: {'(change)': 'manualDateChange($event.target.value)', '(keyup.esc)': 'close()'},
+  host: {'(change)': 'manualDateChange($event.target.value)', '(keyup.esc)': 'close()', '(blur)': '_onTouched()'},
   providers: [NGB_DATEPICKER_VALUE_ACCESSOR]
 })
 export class NgbInputDatepicker implements ControlValueAccessor {
@@ -66,6 +66,12 @@ export class NgbInputDatepicker implements ControlValueAccessor {
    * Max date for the navigation. If not provided will be 10 years from today or `startDate`
    */
   @Input() maxDate: NgbDateStruct;
+
+  /**
+   * The way to display days that don't belong to current month: `visible` (default),
+   * `hidden` (not displayed) or `collapsed` (not displayed with empty space collapsed)
+   */
+  @Input() outsideDays: 'visible' | 'collapsed' | 'hidden';
 
   /**
    * Whether to display navigation
@@ -184,8 +190,8 @@ export class NgbInputDatepicker implements ControlValueAccessor {
   }
 
   private _applyDatepickerInputs(datepickerInstance: NgbDatepicker): void {
-    ['dayTemplate', 'firstDayOfWeek', 'markDisabled', 'minDate', 'maxDate', 'showNavigation', 'showWeekdays',
-     'showWeekNumbers']
+    ['dayTemplate', 'firstDayOfWeek', 'markDisabled', 'minDate', 'maxDate', 'outsideDays', 'showNavigation',
+     'showWeekdays', 'showWeekNumbers']
         .forEach((optionName: string) => {
           if (this[optionName] !== undefined) {
             datepickerInstance[optionName] = this[optionName];
@@ -204,6 +210,7 @@ export class NgbInputDatepicker implements ControlValueAccessor {
     this._renderer.setElementProperty(this._elRef.nativeElement, 'value', this._parserFormatter.format(model));
     if (this.isOpen()) {
       this._cRef.instance.writeValue(model);
+      this._onTouched();
     }
   }
 }
