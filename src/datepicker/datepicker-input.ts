@@ -8,7 +8,8 @@ import {
   ComponentFactoryResolver,
   NgZone,
   TemplateRef,
-  forwardRef
+  forwardRef,
+  OnDestroy
 } from '@angular/core';
 import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
 
@@ -36,7 +37,8 @@ const NGB_DATEPICKER_VALUE_ACCESSOR = {
   host: {'(change)': 'manualDateChange($event.target.value)', '(keyup.esc)': 'close()', '(blur)': '_onTouched()'},
   providers: [NGB_DATEPICKER_VALUE_ACCESSOR]
 })
-export class NgbInputDatepicker implements ControlValueAccessor {
+export class NgbInputDatepicker implements ControlValueAccessor,
+    OnDestroy {
   private _cRef: ComponentRef<NgbDatepicker> = null;
   private _model: NgbDate;
   private _zoneSubscription: any;
@@ -108,6 +110,10 @@ export class NgbInputDatepicker implements ControlValueAccessor {
         positionElements(this._elRef.nativeElement, this._cRef.location.nativeElement, 'bottom-left');
       }
     });
+  }
+
+  ngOnDestroy() {
+    this.close();
   }
 
   registerOnChange(fn: (value: any) => any): void { this._onChange = fn; }
