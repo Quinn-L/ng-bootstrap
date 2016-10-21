@@ -163,6 +163,7 @@ export class NgbTypeahead implements ControlValueAccessor,
   }
 
   ngOnDestroy() {
+    this._closePopup();
     this._unsubscribeFromUserInput();
     this._zoneSubscription.unsubscribe();
   }
