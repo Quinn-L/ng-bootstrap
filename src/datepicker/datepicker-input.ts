@@ -79,6 +79,11 @@ export class NgbInputDatepicker implements ControlValueAccessor,
   @Input() outsideDays: 'visible' | 'collapsed' | 'hidden';
 
   /**
+   * Whether to display footer
+   */
+  @Input() showFooter: boolean;
+
+  /**
    * Whether to display navigation
    */
   @Input() showNavigation: boolean;
@@ -213,8 +218,8 @@ export class NgbInputDatepicker implements ControlValueAccessor,
   }
 
   private _applyDatepickerInputs(datepickerInstance: NgbDatepicker): void {
-    ['dayTemplate', 'firstDayOfWeek', 'markDisabled', 'minDate', 'maxDate', 'outsideDays', 'showNavigation',
-     'showWeekdays', 'showWeekNumbers']
+    ['dayTemplate', 'firstDayOfWeek', 'markDisabled', 'minDate', 'maxDate', 'outsideDays', 'showFooter',
+     'showNavigation', 'showWeekdays', 'showWeekNumbers']
         .forEach((optionName: string) => {
           if (this[optionName] !== undefined) {
             datepickerInstance[optionName] = this[optionName];

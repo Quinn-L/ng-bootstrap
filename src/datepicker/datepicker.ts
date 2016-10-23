@@ -48,6 +48,11 @@ const NGB_DATEPICKER_VALUE_ACCESSOR = {
         (select)="onDateSelect($event)">
       </tbody>
     </table>
+
+    <div *ngIf="showFooter" style="text-align: center;">
+      <button type="button" (click)="selectToday()" class="btn btn-sm btn-outline-primary" 
+        [disabled]="disabled || todayDisabled()">Today</button>
+    </div>
   `,
   providers: [NGB_DATEPICKER_VALUE_ACCESSOR]
 })
@@ -93,6 +98,11 @@ export class NgbDatepicker implements OnChanges,
   @Input() outsideDays: 'visible' | 'collapsed' | 'hidden';
 
   /**
+   * Whether to display footer (eg. today button)
+   */
+  @Input() showFooter: boolean;
+
+  /**
    * Whether to display navigation
    */
   @Input() showNavigation: boolean;
@@ -127,6 +137,7 @@ export class NgbDatepicker implements OnChanges,
     this.minDate = config.minDate;
     this.maxDate = config.maxDate;
     this.outsideDays = config.outsideDays;
+    this.showFooter = config.showFooter;
     this.showNavigation = config.showNavigation;
     this.showWeekdays = config.showWeekdays;
     this.showWeekNumbers = config.showWeekNumbers;
@@ -192,6 +203,20 @@ export class NgbDatepicker implements OnChanges,
   writeValue(value) { this.model = value ? new NgbDate(value.year, value.month, value.day) : null; }
 
   setDisabledState(isDisabled: boolean) { this.disabled = isDisabled; }
+
+  selectToday() {
+    let todayDate = this._calendar.getToday();
+    this.navigateTo(todayDate);
+    this.writeValue(todayDate);
+  }
+
+  todayDisabled() {
+    let todayDate = this._calendar.getToday();
+    if ((this._minDate && this._minDate.after(todayDate)) || (this._maxDate && this._maxDate.before(todayDate))) {
+      return true;
+    }
+    return false;
+  }
 
   private _setDates() {
     this._maxDate = NgbDate.from(this.maxDate);
