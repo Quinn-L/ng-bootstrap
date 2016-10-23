@@ -43,6 +43,9 @@ export class NgbInputDatepicker implements ControlValueAccessor,
   private _model: NgbDate;
   private _zoneSubscription: any;
 
+  private _ignoreUpdatePosition = false;
+  private _scrollListener: (ev: UIEvent) => void;
+
   /**
    * Reference for the custom template for the day display
    */
@@ -106,14 +109,16 @@ export class NgbInputDatepicker implements ControlValueAccessor,
       private _parserFormatter: NgbDateParserFormatter, private _elRef: ElementRef, private _vcRef: ViewContainerRef,
       private _renderer: Renderer, private _cfr: ComponentFactoryResolver, ngZone: NgZone) {
     this._zoneSubscription = ngZone.onStable.subscribe(() => {
-      if (this._cRef) {
-        positionElements(this._elRef.nativeElement, this._cRef.location.nativeElement, 'bottom-left');
+      if (this._cRef && !this._ignoreUpdatePosition) {
+        positionElements(this._elRef.nativeElement, this._cRef.location.nativeElement, 'bottom-left', true);
       }
+      this._ignoreUpdatePosition = false;
     });
   }
 
   ngOnDestroy() {
     this.close();
+    this._zoneSubscription.unsubscribe();
   }
 
   registerOnChange(fn: (value: any) => any): void { this._onChange = fn; }
@@ -159,6 +164,17 @@ export class NgbInputDatepicker implements ControlValueAccessor,
         this._onChange(selectedDate);
         this.close();
       });
+
+      document.body.appendChild(this._cRef.location.nativeElement);
+      this._scrollListener = (ev: UIEvent) => {
+        // document level event  also triggers ngAfterViewChecked
+        if (ev.target === document) {
+          // Don't need to update if the scroll happened on the document, since
+          // the popup is relative to the document
+          this._ignoreUpdatePosition = true;
+        }
+      };
+      document.addEventListener('scroll', this._scrollListener, true);
     }
   }
 
@@ -166,6 +182,7 @@ export class NgbInputDatepicker implements ControlValueAccessor,
    * Closes the datepicker popup.
    */
   close() {
+    document.removeEventListener('scroll', this._scrollListener, true);
     if (this.isOpen()) {
       this._vcRef.remove(this._vcRef.indexOf(this._cRef.hostView));
       this._cRef = null;
