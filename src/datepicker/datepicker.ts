@@ -206,8 +206,7 @@ export class NgbDatepicker implements OnChanges,
 
   selectToday() {
     let todayDate = this._calendar.getToday();
-    this.navigateTo(todayDate);
-    this.writeValue(todayDate);
+    this.onDateSelect(todayDate);
   }
 
   todayDisabled() {
