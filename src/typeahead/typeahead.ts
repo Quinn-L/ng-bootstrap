@@ -84,6 +84,7 @@ export class NgbTypeahead implements ControlValueAccessor,
 
   private _ignoreUpdatePosition = false;
   private _scrollListener: (ev: UIEvent) => void;
+  private _isShowingNoResults = false;
 
   /**
    * A flag indicating if model values should be restricted to the ones selected from the popup only.
@@ -213,9 +214,11 @@ export class NgbTypeahead implements ControlValueAccessor,
           break;
         case Key.Enter:
         case Key.Tab:
-          const result = this._windowRef.instance.getActive();
-          if (isDefined(result)) {
-            this._selectResult(result);
+          if (!this._isShowingNoResults) {
+            const result = this._windowRef.instance.getActive();
+            if (isDefined(result)) {
+              this._selectResult(result);
+            }
           }
           this._closePopup();
           break;
@@ -227,6 +230,12 @@ export class NgbTypeahead implements ControlValueAccessor,
   }
 
   showPopup(results: any[]) {
+    if (results && !results.length) {
+      this._showNoResultPopup();
+      this._windowRef.changeDetectorRef.detectChanges();
+      return;
+    }
+
     this._openPopup();
     this._windowRef.instance.activeIdx = this.focusFirst ? 0 : -1;
     this._windowRef.instance.results = results;
@@ -247,8 +256,26 @@ export class NgbTypeahead implements ControlValueAccessor,
 
   private _openPopup() {
     if (!this._windowRef) {
+      this._isShowingNoResults = false;
       this._windowRef = this._popupService.open(null, true);
       this._windowRef.instance.selectEvent.subscribe((result: any) => this._selectResultClosePopup(result));
+      this._scrollListener = (ev: UIEvent) => {
+        // document level event  also triggers ngAfterViewChecked
+        if (ev.target === document) {
+          // Don't need to update if the scroll happened on the document, since
+          // the popup is relative to the document
+          this._ignoreUpdatePosition = true;
+        }
+      };
+      document.addEventListener('scroll', this._scrollListener, true);
+    }
+  }
+
+  private _showNoResultPopup() {
+    if (!this._windowRef) {
+      this._isShowingNoResults = true;
+      this._windowRef = this._popupService.open(null, true);
+      this._windowRef.instance.selectEvent.subscribe((result: any) => this._closePopup());
       this._scrollListener = (ev: UIEvent) => {
         // document level event  also triggers ngAfterViewChecked
         if (ev.target === document) {
@@ -309,7 +336,16 @@ export class NgbTypeahead implements ControlValueAccessor,
     return userInput$.subscribe((results) => {
       if (!results || results.length === 0) {
         this._closePopup();
+        
+        if (results && !results.length && !!this._userInput) {
+          this._showNoResultPopup();
+          this._windowRef.instance.activeIdx = -1;
+          this._windowRef.instance.results = ['No results'];
+          this._windowRef.changeDetectorRef.detectChanges();
+          return;
+        }
       } else {
+        this._isShowingNoResults = false;
         this._openPopup();
         this._windowRef.instance.activeIdx = this.focusFirst ? 0 : -1;
         this._windowRef.instance.results = results;
