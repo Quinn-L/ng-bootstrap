@@ -32,20 +32,20 @@ export class NgbModalContainer {
     ngbModalStack.registerContainer(this);
   }
 
-  open(content: string | TemplateRef<any>, options): NgbModalRef {
+  open(moduleCFR: ComponentFactoryResolver, contentInjector: Injector, content: string | TemplateRef<any>, options):
+      NgbModalRef {
     const activeModal = new NgbActiveModal();
-    const contentRef = this._getContentRef(content, activeModal);
+    const contentRef = this._getContentRef(moduleCFR, contentInjector, content, activeModal);
     let windowCmptRef: ComponentRef<NgbModalWindow>;
     let backdropCmptRef: ComponentRef<NgbModalBackdrop>;
     let ngbModalRef: NgbModalRef;
 
     if (options.backdrop !== false) {
-      backdropCmptRef =
-          this._viewContainerRef.createComponent(this._backdropFactory, this._viewContainerRef.length, this._injector);
+      backdropCmptRef = this._viewContainerRef.createComponent(this._backdropFactory, 0, this._injector);
     }
 
     windowCmptRef = this._viewContainerRef.createComponent(
-        this._windowFactory, this._viewContainerRef.length, this._injector, contentRef.nodes);
+        this._windowFactory, this._viewContainerRef.length - 1, this._injector, contentRef.nodes);
 
     ngbModalRef = new NgbModalRef(this._viewContainerRef, windowCmptRef, contentRef, backdropCmptRef);
 
@@ -65,7 +65,9 @@ export class NgbModalContainer {
     });
   }
 
-  private _getContentRef(content: any, context: NgbActiveModal): ContentRef {
+  private _getContentRef(
+      moduleCFR: ComponentFactoryResolver, contentInjector: Injector, content: any,
+      context: NgbActiveModal): ContentRef {
     if (!content) {
       return new ContentRef([]);
     } else if (content instanceof TemplateRef) {
@@ -74,9 +76,9 @@ export class NgbModalContainer {
     } else if (isString(content)) {
       return new ContentRef([[this._renderer.createText(null, `${content}`)]]);
     } else {
-      const contentCmptFactory = this._componentFactoryResolver.resolveComponentFactory(content);
+      const contentCmptFactory = moduleCFR.resolveComponentFactory(content);
       const modalContentInjector =
-          ReflectiveInjector.resolveAndCreate([{provide: NgbActiveModal, useValue: context}], this._injector);
+          ReflectiveInjector.resolveAndCreate([{provide: NgbActiveModal, useValue: context}], contentInjector);
       const componentRef = this._viewContainerRef.createComponent(contentCmptFactory, 0, modalContentInjector);
       return new ContentRef([[componentRef.location.nativeElement]], componentRef.hostView, componentRef);
     }

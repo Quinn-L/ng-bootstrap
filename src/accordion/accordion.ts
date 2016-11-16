@@ -55,7 +55,8 @@ export class NgbPanel {
   @Input() title: string;
 
   /**
-   *  Panel type (CSS class). Bootstrap 4 recognizes the following types: "success", "info", "warning" and "danger".
+   *  Accordion's types of panels to be applied per panel basis.
+   *  Bootstrap 4 recognizes the following types: "success", "info", "warning" and "danger".
    */
   @Input() type: string;
 
@@ -94,8 +95,8 @@ export interface NgbPanelChangeEvent {
   <div class="card">
     <template ngFor let-panel [ngForOf]="panels">
       <div [class]="'card-header ' + (panel.type ? 'card-'+panel.type: type ? 'card-'+type : '')" [class.active]="isOpen(panel.id)">
-        <a tabindex="0" href (click)="!!toggle(panel.id)" [class.text-muted]="panel.disabled">
-          {{panel.title}}<template [ngTemplateOutlet]="panel.titleTpl?.templateRef"></template>          
+        <a href (click)="!!toggle(panel.id)" [class.text-muted]="panel.disabled">
+          {{panel.title}}<template [ngTemplateOutlet]="panel.titleTpl?.templateRef"></template>
         </a>
       </div>
       <div class="card-block" *ngIf="isOpen(panel.id)">
@@ -119,7 +120,8 @@ export class NgbAccordion implements AfterContentChecked {
   @Input('closeOthers') closeOtherPanels: boolean;
 
   /**
-   *  Type of accordion's panels. Bootstrap 4 recognizes the following types: "success", "info", "warning" and "danger".
+   *  Accordion's types of panels to be applied globally.
+   *  Bootstrap 4 recognizes the following types: "success", "info", "warning" and "danger".
    */
   @Input() type: string;
 
@@ -209,5 +211,3 @@ export class NgbAccordion implements AfterContentChecked {
     });
   }
 }
-
-export const NGB_ACCORDION_DIRECTIVES = [NgbAccordion, NgbPanel, NgbPanelTitle, NgbPanelContent];

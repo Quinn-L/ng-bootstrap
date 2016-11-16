@@ -9,12 +9,14 @@ import {
   NgZone,
   TemplateRef,
   forwardRef,
+  EventEmitter,
+  Output,
   OnDestroy
 } from '@angular/core';
 import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
 
 import {NgbDate} from './ngb-date';
-import {NgbDatepicker} from './datepicker';
+import {NgbDatepicker, NgbDatepickerNavigateEvent} from './datepicker';
 import {DayTemplateContext} from './datepicker-day-template-context';
 import {NgbDateParserFormatter} from './ngb-date-parser-formatter';
 
@@ -34,7 +36,7 @@ const NGB_DATEPICKER_VALUE_ACCESSOR = {
 @Directive({
   selector: 'input[ngbDatepicker]',
   exportAs: 'ngbDatepicker',
-  host: {'(change)': 'manualDateChange($event.target.value)', '(keyup.esc)': 'close()', '(blur)': '_onTouched()'},
+  host: {'(change)': 'manualDateChange($event.target.value)', '(keyup.esc)': 'close()', '(blur)': 'onBlur()'},
   providers: [NGB_DATEPICKER_VALUE_ACCESSOR]
 })
 export class NgbInputDatepicker implements ControlValueAccessor,
@@ -50,6 +52,11 @@ export class NgbInputDatepicker implements ControlValueAccessor,
    * Reference for the custom template for the day display
    */
   @Input() dayTemplate: TemplateRef<DayTemplateContext>;
+
+  /**
+   * Number of months to display
+   */
+  @Input() displayMonths: number;
 
   /**
   * First day of the week. With default calendar we use ISO 8601: 1=Mon ... 7=Sun
@@ -73,6 +80,12 @@ export class NgbInputDatepicker implements ControlValueAccessor,
   @Input() maxDate: NgbDateStruct;
 
   /**
+   * Navigation type: `select` (default with select boxes for month and year), `arrows`
+   * (without select boxes, only navigation arrows) or `none` (no navigation at all)
+   */
+  @Input() navigation: 'select' | 'arrows' | 'none';
+
+  /**
    * The way to display days that don't belong to current month: `visible` (default),
    * `hidden` (not displayed) or `collapsed` (not displayed with empty space collapsed)
    */
@@ -82,11 +95,6 @@ export class NgbInputDatepicker implements ControlValueAccessor,
    * Whether to display footer
    */
   @Input() showFooter: boolean;
-
-  /**
-   * Whether to display navigation
-   */
-  @Input() showNavigation: boolean;
 
   /**
    * Whether to display days of the week
@@ -105,6 +113,12 @@ export class NgbInputDatepicker implements ControlValueAccessor,
    * Use 'navigateTo(date)' as an alternative
    */
   @Input() startDate: {year: number, month: number};
+
+  /**
+   * An event fired when navigation happens and currently displayed month changes.
+   * See NgbDatepickerNavigateEvent for the payload info.
+   */
+  @Output() navigate = new EventEmitter<NgbDatepickerNavigateEvent>();
 
   private _onChange = (_: any) => {};
   private _onTouched = () => {};
@@ -161,6 +175,7 @@ export class NgbInputDatepicker implements ControlValueAccessor,
       this._applyPopupStyling(this._cRef.location.nativeElement);
       this._cRef.instance.writeValue(this._model);
       this._applyDatepickerInputs(this._cRef.instance);
+      this._subscribeForDatepickerOutputs(this._cRef.instance);
       this._cRef.instance.ngOnInit();
 
       // date selection event handling
@@ -217,9 +232,11 @@ export class NgbInputDatepicker implements ControlValueAccessor,
     }
   }
 
+  onBlur() { this._onTouched(); }
+
   private _applyDatepickerInputs(datepickerInstance: NgbDatepicker): void {
-    ['dayTemplate', 'firstDayOfWeek', 'markDisabled', 'minDate', 'maxDate', 'outsideDays', 'showFooter',
-     'showNavigation', 'showWeekdays', 'showWeekNumbers']
+    ['dayTemplate', 'displayMonths', 'firstDayOfWeek', 'markDisabled', 'minDate', 'maxDate', 'navigation',
+     'outsideDays', 'showFooter', 'showNavigation', 'showWeekdays', 'showWeekNumbers']
         .forEach((optionName: string) => {
           if (this[optionName] !== undefined) {
             datepickerInstance[optionName] = this[optionName];
@@ -232,6 +249,10 @@ export class NgbInputDatepicker implements ControlValueAccessor,
     this._renderer.setElementClass(nativeElement, 'dropdown-menu', true);
     this._renderer.setElementStyle(nativeElement, 'display', 'block');
     this._renderer.setElementStyle(nativeElement, 'padding', '0.40rem');
+  }
+
+  private _subscribeForDatepickerOutputs(datepickerInstance: NgbDatepicker) {
+    datepickerInstance.navigate.subscribe(date => this.navigate.emit(date));
   }
 
   private _writeModelValue(model: NgbDate) {

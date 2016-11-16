@@ -1,4 +1,4 @@
-import {Component, Input, Output, ElementRef, EventEmitter, TemplateRef, ContentChildren} from '@angular/core';
+import {Component, Input, Output, ElementRef, EventEmitter, TemplateRef, OnInit} from '@angular/core';
 
 import {toString} from '../util/util';
 
@@ -35,11 +35,13 @@ export interface ResultTemplateContext {
     </template>
   `
 })
-export class NgbTypeaheadWindow {
+export class NgbTypeaheadWindow implements OnInit {
+  activeIdx = 0;
+
   /**
-   * An index of a match to be selected initially
+   * Flag indicating if the first row should be active initially
    */
-  @Input() activeIdx = 0;
+  @Input() focusFirst = true;
 
   /**
    * Typeahead match results to be displayed
@@ -71,28 +73,34 @@ export class NgbTypeaheadWindow {
 
   getActive() { return this.results[this.activeIdx]; }
 
-  /**
-   * @internal
-   */
   markActive(activeIdx: number) { this.activeIdx = activeIdx; }
 
   next() {
     let prevIndex = this.activeIdx;
-    this.activeIdx = (this.activeIdx + 1) % this.results.length;
+    if (this.activeIdx === this.results.length - 1) {
+      this.activeIdx = this.focusFirst ? (this.activeIdx + 1) % this.results.length : -1;
+    } else {
+      this.activeIdx++;
+    }
     this.updateView(prevIndex > this.activeIdx);
   }
 
   prev() {
     let prevIndex = this.activeIdx;
-    this.activeIdx = (this.activeIdx <= 0 ? this.results.length - 1 : this.activeIdx - 1);
+    if (this.activeIdx < 0) {
+      this.activeIdx = this.results.length - 1;
+    } else if (this.activeIdx === 0) {
+      this.activeIdx = this.focusFirst ? this.results.length - 1 : -1;
+    } else {
+      this.activeIdx--;
+    }
     this.updateView(prevIndex > this.activeIdx);
   }
 
-  /**
-   * @internal
-   */
   select(item) { this.selectEvent.emit(item); }
 
+  ngOnInit() { this.activeIdx = this.focusFirst ? 0 : -1; }
+  
   private updateView(navUpwards: boolean) {
     let buttons = (this._elementRef.nativeElement as HTMLElement).querySelectorAll('button');
     let directChildren: HTMLElement[] = [];

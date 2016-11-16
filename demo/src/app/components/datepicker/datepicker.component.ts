@@ -9,6 +9,7 @@ import {DEMO_SNIPPETS} from './demos';
       <ngbd-api-docs directive="NgbInputDatepicker"></ngbd-api-docs>
       <ngbd-api-docs-class type="NgbDateStruct"></ngbd-api-docs-class>
       <ngbd-api-docs-class type="DayTemplateContext"></ngbd-api-docs-class>
+      <ngbd-api-docs-class type="NgbDatepickerNavigateEvent"></ngbd-api-docs-class>
       <ngbd-api-docs-class type="NgbDatepickerI18n"></ngbd-api-docs-class>
       <ngbd-api-docs-class type="NgbDateParserFormatter"></ngbd-api-docs-class>
       <ngbd-api-docs-config type="NgbDatepickerConfig"></ngbd-api-docs-config>
@@ -17,6 +18,9 @@ import {DEMO_SNIPPETS} from './demos';
       </ngbd-example-box>
       <ngbd-example-box demoTitle="Datepicker in a popup" [snippets]="snippets" component="datepicker" demo="popup">
         <ngbd-datepicker-popup></ngbd-datepicker-popup>
+      </ngbd-example-box>
+      <ngbd-example-box demoTitle="Multiple months" [snippets]="snippets" component="datepicker" demo="multiple">
+        <ngbd-datepicker-multiple></ngbd-datepicker-multiple>
       </ngbd-example-box>
       <ngbd-example-box demoTitle="Disabled datepicker" [snippets]="snippets" component="datepicker" demo="disabled">
         <ngbd-datepicker-disabled></ngbd-datepicker-disabled>

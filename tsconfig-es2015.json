@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es5",
+    "lib": ["es2015", "dom"],
     "module": "es2015",
     "moduleResolution": "node",
     "declaration": true,
@@ -14,8 +15,7 @@
     "skipLibCheck": true
   },
   "files": [
-    "src/index.ts",
-    "typings/index.d.ts"
+    "src/index.ts"
   ],
   "angularCompilerOptions": {
     "strictMetadataEmit": true,

@@ -157,6 +157,17 @@ describe('NgbInputDatepicker', () => {
       expect(dp.dayTemplate).toBeDefined();
     });
 
+    it('should propagate the "displayMonths" option', () => {
+      const fixture = createTestCmpt(`<input ngbDatepicker [displayMonths]="3">`);
+      const dpInput = fixture.debugElement.query(By.directive(NgbInputDatepicker)).injector.get(NgbInputDatepicker);
+
+      dpInput.open();
+      fixture.detectChanges();
+
+      const dp = fixture.debugElement.query(By.css('ngb-datepicker')).injector.get(NgbDatepicker);
+      expect(dp.displayMonths).toBe(3);
+    });
+
     it('should propagate the "firstDayOfWeek" option', () => {
       const fixture = createTestCmpt(`<input ngbDatepicker [firstDayOfWeek]="5">`);
       const dpInput = fixture.debugElement.query(By.directive(NgbInputDatepicker)).injector.get(NgbInputDatepicker);
@@ -212,15 +223,15 @@ describe('NgbInputDatepicker', () => {
       expect(dp.outsideDays).toEqual('collapsed');
     });
 
-    it('should propagate the "showNavigation" option', () => {
-      const fixture = createTestCmpt(`<input ngbDatepicker [showNavigation]="true">`);
+    it('should propagate the "navigation" option', () => {
+      const fixture = createTestCmpt(`<input ngbDatepicker navigation="none">`);
       const dpInput = fixture.debugElement.query(By.directive(NgbInputDatepicker)).injector.get(NgbInputDatepicker);
 
       dpInput.open();
       fixture.detectChanges();
 
       const dp = fixture.debugElement.query(By.css('ngb-datepicker')).injector.get(NgbDatepicker);
-      expect(dp.showNavigation).toBeTruthy();
+      expect(dp.navigation).toBe('none');
     });
 
     it('should propagate the "showWeekdays" option', () => {
@@ -268,6 +279,23 @@ describe('NgbInputDatepicker', () => {
          const dp = fixture.debugElement.query(By.css('ngb-datepicker')).injector.get(NgbDatepicker);
          expect(dp.startDate).toEqual(NgbDate.from({year: 2016, month: 9, day: 13}));
        }));
+
+    it('should relay the "navigate" event', () => {
+      const fixture =
+          createTestCmpt(`<input ngbDatepicker [startDate]="{year: 2016, month: 9}" (navigate)="onNavigate($event)">`);
+      const dpInput = fixture.debugElement.query(By.directive(NgbInputDatepicker)).injector.get(NgbInputDatepicker);
+
+      spyOn(fixture.componentInstance, 'onNavigate');
+
+      dpInput.open();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.onNavigate).toHaveBeenCalledWith({current: null, next: {year: 2016, month: 9}});
+
+      const dp = fixture.debugElement.query(By.css('ngb-datepicker')).injector.get(NgbDatepicker);
+      dp.navigateTo({year: 2018, month: 4});
+      expect(fixture.componentInstance.onNavigate)
+          .toHaveBeenCalledWith({current: {year: 2016, month: 9}, next: {year: 2018, month: 4}});
+    });
   });
 });
 
@@ -275,6 +303,8 @@ describe('NgbInputDatepicker', () => {
 class TestComponent {
   date: NgbDateStruct;
   isDisabled;
+
+  onNavigate() {}
 
   open(d: NgbInputDatepicker) { d.open(); }
 
