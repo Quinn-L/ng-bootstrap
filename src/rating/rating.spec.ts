@@ -1,7 +1,8 @@
-import {TestBed, ComponentFixture, inject} from '@angular/core/testing';
+import {TestBed, ComponentFixture, inject, async, fakeAsync, tick} from '@angular/core/testing';
 import {createGenericTestComponent} from '../test/common';
 
-import {Component} from '@angular/core';
+import {Component, DebugElement} from '@angular/core';
+import {FormsModule, ReactiveFormsModule, FormGroup, FormControl, Validators} from '@angular/forms';
 
 import {NgbRatingModule} from './rating.module';
 import {NgbRating} from './rating';
@@ -28,7 +29,7 @@ function createKeyDownEvent(key: number) {
 
 function getAriaState(compiled) {
   const stars = getStars(compiled, '.sr-only');
-  return stars.map(star => star.textContent === '(*)' && star.textContent !== '( )');
+  return stars.map(star => star.textContent === '(*)');
 }
 
 function getStar(compiled, num: number) {
@@ -39,8 +40,12 @@ function getStars(element, selector = 'span > span:not(.sr-only)') {
   return <HTMLElement[]>Array.from(element.querySelectorAll(selector));
 }
 
-function getState(compiled) {
-  const stars = getStars(compiled);
+function getDbgStar(element, num: number) {
+  return element.queryAll(By.css('span > span:not(.sr-only)'))[num - 1];
+}
+
+function getState(element: DebugElement | HTMLElement) {
+  const stars = getStars(element instanceof DebugElement ? element.nativeElement : element);
   return stars.map(star => star.textContent.trim() === String.fromCharCode(9733));
 }
 
@@ -50,12 +55,14 @@ function getStateText(compiled) {
 }
 
 describe('ngb-rating', () => {
-  beforeEach(
-      () => { TestBed.configureTestingModule({declarations: [TestComponent], imports: [NgbRatingModule.forRoot()]}); });
+  beforeEach(() => {
+    TestBed.configureTestingModule(
+        {declarations: [TestComponent], imports: [NgbRatingModule.forRoot(), FormsModule, ReactiveFormsModule]});
+  });
 
   it('should initialize inputs with default values', () => {
     const defaultConfig = new NgbRatingConfig();
-    const rating = new NgbRating(new NgbRatingConfig());
+    const rating = new NgbRating(new NgbRatingConfig(), null);
     expect(rating.max).toBe(defaultConfig.max);
     expect(rating.readonly).toBe(defaultConfig.readonly);
   });
@@ -104,14 +111,125 @@ describe('ngb-rating', () => {
     expect(getState(compiled)).toEqual([true, true, true, true, true]);
   });
 
-  it('handles correctly the click event', () => {
-    const fixture = createTestComponent('<ngb-rating rate="3" max="5"></ngb-rating>');
+  it('handles correctly the click event', fakeAsync(() => {
+       const fixture = createTestComponent('<ngb-rating [(rate)]="rate" max="5"></ngb-rating>');
+       const el = fixture.debugElement;
+       const rating = el.query(By.directive(NgbRating)).children[0];
 
-    const compiled = fixture.nativeElement;
+       // 3/5
+       expect(getState(el)).toEqual([true, true, true, false, false]);
 
-    getStar(compiled, 2).click();
+       // enter 2 -> 2/5, rate = 3
+       getDbgStar(el, 2).triggerEventHandler('mouseenter', {});
+       fixture.detectChanges();
+       expect(getState(el)).toEqual([true, true, false, false, false]);
+       expect(fixture.componentInstance.rate).toBe(3);
+
+       // click 2 -> 2/5, rate = 2
+       getStar(el.nativeElement, 2).click();
+       fixture.detectChanges();
+       tick();
+       expect(getState(el)).toEqual([true, true, false, false, false]);
+       expect(fixture.componentInstance.rate).toBe(2);
+
+       // leave 2 -> 2/5, rate = 2
+       rating.triggerEventHandler('mouseleave', {});
+       fixture.detectChanges();
+       expect(getState(el)).toEqual([true, true, false, false, false]);
+       expect(fixture.componentInstance.rate).toBe(2);
+     }));
+
+  it('ignores the click event on a readonly rating', () => {
+    const fixture = createTestComponent('<ngb-rating [(rate)]="rate" max="5" [readonly]="true"></ngb-rating>');
+    const el = fixture.debugElement;
+    const rating = el.query(By.directive(NgbRating)).children[0];
+
+    // 3/5
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+
+    // enter 2 -> 3/5
+    getDbgStar(el, 2).triggerEventHandler('mouseenter', {});
     fixture.detectChanges();
-    expect(getState(compiled)).toEqual([true, true, false, false, false]);
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+    expect(fixture.componentInstance.rate).toBe(3);
+
+    // click 2 -> 2/5
+    getStar(el.nativeElement, 2).click();
+    fixture.detectChanges();
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+    expect(fixture.componentInstance.rate).toBe(3);
+
+    // leave 2 -> 3/5
+    rating.triggerEventHandler('mouseleave', {});
+    fixture.detectChanges();
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+    expect(fixture.componentInstance.rate).toBe(3);
+  });
+
+  it('handles correctly the mouse enter/leave', () => {
+    const fixture = createTestComponent('<ngb-rating [(rate)]="rate" max="5"></ngb-rating>');
+    const el = fixture.debugElement;
+    const rating = el.query(By.directive(NgbRating)).children[0];
+
+    // 3/5
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+
+    // enter 1 -> 1/5, rate = 3
+    getDbgStar(el, 1).triggerEventHandler('mouseenter', {});
+    fixture.detectChanges();
+    expect(getState(el)).toEqual([true, false, false, false, false]);
+    expect(fixture.componentInstance.rate).toBe(3);
+
+    // leave -> 3/5, rate = 3
+    rating.triggerEventHandler('mouseleave', {});
+    fixture.detectChanges();
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+    expect(fixture.componentInstance.rate).toBe(3);
+
+    // enter 5 -> 5/5, rate = 3
+    getDbgStar(el, 5).triggerEventHandler('mouseenter', {});
+    fixture.detectChanges();
+    expect(getState(el)).toEqual([true, true, true, true, true]);
+    expect(fixture.componentInstance.rate).toBe(3);
+
+    // enter 4 -> 4/5, rate = 3
+    getDbgStar(el, 4).triggerEventHandler('mouseenter', {});
+    fixture.detectChanges();
+    expect(getState(el)).toEqual([true, true, true, true, false]);
+    expect(fixture.componentInstance.rate).toBe(3);
+  });
+
+  it('handles correctly the mouse enter/leave on readonly rating', () => {
+    const fixture = createTestComponent('<ngb-rating [(rate)]="rate" max="5" [readonly]="true"></ngb-rating>');
+    const el = fixture.debugElement;
+    const rating = el.query(By.directive(NgbRating)).children[0];
+
+    // 3/5
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+
+    // enter 1 -> 3/5, rate = 3
+    getDbgStar(el, 1).triggerEventHandler('mouseenter', {});
+    fixture.detectChanges();
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+    expect(fixture.componentInstance.rate).toBe(3);
+
+    // leave -> 3/5, rate = 3
+    rating.triggerEventHandler('mouseleave', {});
+    fixture.detectChanges();
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+    expect(fixture.componentInstance.rate).toBe(3);
+
+    // enter 5 -> 3/5, rate = 3
+    getDbgStar(el, 5).triggerEventHandler('mouseenter', {});
+    fixture.detectChanges();
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+    expect(fixture.componentInstance.rate).toBe(3);
+
+    // enter 4 -> 3/5, rate = 3
+    getDbgStar(el, 4).triggerEventHandler('mouseenter', {});
+    fixture.detectChanges();
+    expect(getState(el)).toEqual([true, true, true, false, false]);
+    expect(fixture.componentInstance.rate).toBe(3);
   });
 
   it('should set pointer cursor on stars when not readonly', () => {
@@ -304,6 +422,113 @@ describe('ngb-rating', () => {
     });
   });
 
+  describe('forms', () => {
+
+    it('should work with template-driven form validation', async(() => {
+         const html = `
+        <form>
+          <ngb-rating [(ngModel)]="model" name="control" max="5" required></ngb-rating>
+        </form>`;
+
+         const fixture = createTestComponent(html);
+         const element = fixture.debugElement.query(By.directive(NgbRating));
+
+         fixture.detectChanges();
+         fixture.whenStable()
+             .then(() => {
+               fixture.detectChanges();
+               expect(getState(element.nativeElement)).toEqual([false, false, false, false, false]);
+               expect(element.nativeElement).toHaveCssClass('ng-invalid');
+
+               fixture.componentInstance.model = 1;
+               fixture.detectChanges();
+               return fixture.whenStable();
+             })
+             .then(() => {
+               fixture.detectChanges();
+               expect(getState(element.nativeElement)).toEqual([true, false, false, false, false]);
+               expect(element.nativeElement).toHaveCssClass('ng-valid');
+
+               fixture.componentInstance.model = 0;
+               fixture.detectChanges();
+               return fixture.whenStable();
+             })
+             .then(() => {
+               fixture.detectChanges();
+               expect(getState(element.nativeElement)).toEqual([false, false, false, false, false]);
+               expect(element.nativeElement).toHaveCssClass('ng-valid');
+             });
+       }));
+
+    it('should work with reactive form validation', () => {
+      const html = `
+        <form [formGroup]="form">
+          <ngb-rating formControlName="rating" max="5"></ngb-rating>
+        </form>`;
+
+      const fixture = createTestComponent(html);
+      const element = fixture.debugElement.query(By.directive(NgbRating));
+
+      expect(getState(element.nativeElement)).toEqual([false, false, false, false, false]);
+      expect(element.nativeElement).toHaveCssClass('ng-invalid');
+
+      fixture.componentInstance.form.patchValue({rating: 3});
+      fixture.detectChanges();
+      expect(getState(element.nativeElement)).toEqual([true, true, true, false, false]);
+      expect(element.nativeElement).toHaveCssClass('ng-valid');
+
+      fixture.componentInstance.form.patchValue({rating: 0});
+      fixture.detectChanges();
+      expect(getState(element.nativeElement)).toEqual([false, false, false, false, false]);
+      expect(element.nativeElement).toHaveCssClass('ng-valid');
+    });
+
+    it('should handle clicks and update form control', () => {
+      const html = `
+        <form [formGroup]="form">
+          <ngb-rating formControlName="rating" max="5"></ngb-rating>
+        </form>`;
+
+      const fixture = createTestComponent(html);
+      const element = fixture.debugElement.query(By.directive(NgbRating));
+
+      expect(getState(element.nativeElement)).toEqual([false, false, false, false, false]);
+      expect(element.nativeElement).toHaveCssClass('ng-invalid');
+
+      getStar(element.nativeElement, 3).click();
+      fixture.detectChanges();
+      expect(getState(element.nativeElement)).toEqual([true, true, true, false, false]);
+      expect(element.nativeElement).toHaveCssClass('ng-valid');
+    });
+
+    it('should work with both rate input and form control', fakeAsync(() => {
+         const html = `
+        <form [formGroup]="form">
+          <ngb-rating [(rate)]="rate" formControlName="rating" max="5"></ngb-rating>
+        </form>`;
+
+         const fixture = createTestComponent(html);
+         const element = fixture.debugElement.query(By.directive(NgbRating));
+
+         expect(getState(element.nativeElement)).toEqual([false, false, false, false, false]);
+         expect(element.nativeElement).toHaveCssClass('ng-invalid');
+
+         getStar(element.nativeElement, 2).click();
+         fixture.detectChanges();
+         tick();
+         expect(getState(element.nativeElement)).toEqual([true, true, false, false, false]);
+         expect(fixture.componentInstance.rate).toBe(2);
+         expect(element.nativeElement).toHaveCssClass('ng-valid');
+
+         fixture.componentInstance.rate = 4;
+         fixture.detectChanges();
+         tick();
+         expect(getState(element.nativeElement)).toEqual([true, true, true, true, false]);
+         expect(fixture.componentInstance.form.get('rating').value).toBe(4);
+         expect(element.nativeElement).toHaveCssClass('ng-valid');
+       }));
+  });
+
   describe('Custom config', () => {
     let config: NgbRatingConfig;
 
@@ -348,6 +573,8 @@ describe('ngb-rating', () => {
 
 @Component({selector: 'test-cmp', template: ''})
 class TestComponent {
+  form = new FormGroup({rating: new FormControl(null, Validators.required)});
   max = 10;
+  model;
   rate = 3;
 }
